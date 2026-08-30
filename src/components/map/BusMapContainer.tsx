@@ -30,6 +30,12 @@ interface BusMapProps {
     heading?: number;
   }>;
   students?: Student[];
+  schoolLocation?: {
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+  };
   routeCoords?: Array<[number, number]>;
   center?: [number, number];
   zoom?: number;
@@ -43,9 +49,10 @@ interface BusMapProps {
 export default function BusMapContainer({
   buses = [],
   students = [],
+  schoolLocation = SCHOOL_LOCATION,
   routeCoords = [],
   center = [41.5420, 60.6350],
-  zoom = 14,
+  zoom = 13,
   emergencyAlerts = [],
   routeAlerts = [],
   height = '450px',
@@ -57,6 +64,8 @@ export default function BusMapContainer({
   const busMarkerRef = useRef<maptilersdk.Marker | null>(null);
   const studentMarkersRef = useRef<maptilersdk.Marker[]>([]);
   const schoolMarkerRef = useRef<maptilersdk.Marker | null>(null);
+
+  const effectiveSchool = schoolLocation || SCHOOL_LOCATION;
 
   // Dynamic high-precision road path state from MapTiler Directions engine
   const [roadCoordinates, setRoadCoordinates] = useState<Array<[number, number]>>(
@@ -75,15 +84,24 @@ export default function BusMapContainer({
     heading: 140
   };
 
-  // 1. Fetch MapTiler Directions Turn-by-Turn Road Geometry
+  // 1. Fetch MapTiler Directions Turn-by-Turn Road Geometry whenever students or school location change
   useEffect(() => {
     let isMounted = true;
+    const activeStudentPoints: Array<[number, number]> = students
+      .filter(s => s.address && s.status === 'active')
+      .map(s => [s.address!.latitude, s.address!.longitude] as [number, number]);
+
     const waypoints: Array<[number, number]> = routeCoords.length > 0 
       ? routeCoords 
+      : (activeStudentPoints.length > 0)
+      ? [
+          activeStudentPoints[0],
+          ...activeStudentPoints.slice(1),
+          [effectiveSchool.lat, effectiveSchool.lng]
+        ]
       : [
-          [41.5620, 60.6120], // Ali (Al-Xorazmiy shoh ko'chasi, Urganch)
-          ...students.filter(s => s.address && s.status === 'active').map(s => [s.address!.latitude, s.address!.longitude] as [number, number]),
-          [SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng]
+          [41.5620, 60.6120],
+          [effectiveSchool.lat, effectiveSchool.lng]
         ];
 
     fetchRealRoadRoute(waypoints).then(coords => {
@@ -93,7 +111,7 @@ export default function BusMapContainer({
     });
 
     return () => { isMounted = false; };
-  }, [students, routeCoords]);
+  }, [students, routeCoords, effectiveSchool.lat, effectiveSchool.lng]);
 
   // 2. Initialize 2D Flat MapTiler Vector Map
   useEffect(() => {
@@ -151,7 +169,7 @@ export default function BusMapContainer({
     }
   }, [center, zoom, followBus]);
 
-  // 4. Draw MapTiler Directions Traffic Polylines & WebGL Vehicle Position
+  // 4. Draw MapTiler Directions Traffic Polylines
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -234,13 +252,14 @@ export default function BusMapContainer({
     }
   }, [roadCoordinates]);
 
-  // 5. Render School Marker ("07:55 da yetib keladi")
+  // 5. Render School Marker ("07:55 da yetib keladi") dynamically using effectiveSchool
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     if (schoolMarkerRef.current) {
       schoolMarkerRef.current.remove();
+      schoolMarkerRef.current = null;
     }
 
     const schoolEl = document.createElement('div');
@@ -284,19 +303,20 @@ export default function BusMapContainer({
     `;
 
     const marker = new maptilersdk.Marker({ element: schoolEl, anchor: 'bottom' })
-      .setLngLat([SCHOOL_LOCATION.lng, SCHOOL_LOCATION.lat])
+      .setLngLat([effectiveSchool.lng, effectiveSchool.lat])
       .setPopup(new maptilersdk.Popup({ offset: 20 }).setHTML(`
         <div style="padding: 4px;">
-          <h4 style="font-weight: bold; color: #2563eb; margin: 0; font-size: 13px;">${SCHOOL_LOCATION.name}</h4>
-          <p style="font-size: 11px; color: #64748b; margin-top: 3px;">${SCHOOL_LOCATION.address}</p>
+          <h4 style="font-weight: bold; color: #2563eb; margin: 0; font-size: 13px;">${effectiveSchool.name}</h4>
+          <p style="font-size: 11px; color: #64748b; margin-top: 3px;">${effectiveSchool.address}</p>
+          <p style="font-size: 10px; color: #94a3b8; margin: 2px 0 0 0; font-family: monospace;">${effectiveSchool.lat}, ${effectiveSchool.lng}</p>
         </div>
       `))
       .addTo(map);
 
     schoolMarkerRef.current = marker;
-  }, []);
+  }, [effectiveSchool.lat, effectiveSchool.lng, effectiveSchool.name, effectiveSchool.address]);
 
-  // 6. Render Student Home Photo Pins
+  // 6. Render Student Home Photo Pins (Live synced to student addresses)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -360,6 +380,7 @@ export default function BusMapContainer({
               </div>
             </div>
             <p style="font-size: 10px; color: #64748b; margin: 3px 0 0 0;"><strong>Manzil:</strong> ${student.address.address_text}</p>
+            <p style="font-size: 9px; color: #94a3b8; margin: 2px 0 0 0; font-family: monospace;">${student.address.latitude}, ${student.address.longitude}</p>
           </div>
         `))
         .addTo(map);

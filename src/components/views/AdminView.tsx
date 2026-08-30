@@ -256,6 +256,7 @@ export default function AdminView() {
                   heading: busLocations[v.id]?.heading || 140
                 }))}
                 students={students}
+                schoolLocation={schoolLocation}
                 emergencyAlerts={emergencyAlerts}
                 routeAlerts={routeAlerts}
                 onMapClick={handleMapClick}
