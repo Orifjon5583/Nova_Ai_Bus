@@ -38,8 +38,8 @@ const createCustomIcon = (color: string, label: string, svgHtml: string) => {
   });
 };
 
-// 1. Top-Down Yellow Vehicle with Drop Shadow (Matches Yandex Go / Yandex Maps uploaded image)
-const createTopDownBusIcon = (plateNumber: string, speed: number, heading = 25) => {
+// 1. Unified Yandex Vehicle with Integrated "3 daq" ETA Bubble on top (100% glued to car position)
+const createYandexBusMarkerIcon = (plateNumber: string, speed: number, etaMinutes = 3, heading = 160) => {
   return L.divIcon({
     className: 'custom-leaflet-marker',
     html: `
@@ -47,14 +47,44 @@ const createTopDownBusIcon = (plateNumber: string, speed: number, heading = 25) 
         display: flex;
         flex-direction: column;
         align-items: center;
-        transform: translate(-50%, -50%);
+        transform: translate(-50%, -70%);
       ">
-        <!-- Top-Down Yellow Vehicle SVG with 3D shadow -->
+        <!-- Yellow ETA Bubble attached directly on top of the car -->
+        <div style="
+          background: #fbbf24;
+          color: #0f172a;
+          font-weight: 900;
+          padding: 4px 10px;
+          border-radius: 14px;
+          box-shadow: 0 4px 14px rgba(251, 191, 36, 0.45);
+          text-align: center;
+          position: relative;
+          border: 2px solid #ffffff;
+          margin-bottom: 4px;
+        ">
+          <div style="font-size: 14px; line-height: 1.1; font-weight: 900;">${etaMinutes}</div>
+          <div style="font-size: 9px; font-weight: 800; margin-top: -2px;">daq</div>
+          
+          <!-- Bottom Pointer Arrow -->
+          <div style="
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #fbbf24;
+          "></div>
+        </div>
+
+        <!-- Top-Down Yellow Vehicle SVG with Drop Shadow -->
         <div style="
           transform: rotate(${heading}deg);
-          filter: drop-shadow(0 6px 14px rgba(0,0,0,0.4));
+          filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45));
         ">
-          <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="38" height="38" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="25" y="10" width="50" height="80" rx="18" fill="#facc15" stroke="#ca8a04" stroke-width="4"/>
             <rect x="32" y="28" width="36" height="44" rx="8" fill="#eab308"/>
             <path d="M33 28 C33 20 67 20 67 28 L64 36 L36 36 Z" fill="#0f172a"/>
@@ -70,84 +100,28 @@ const createTopDownBusIcon = (plateNumber: string, speed: number, heading = 25) 
 
         <!-- Plate & Speed pill badge -->
         <div style="
-          background: rgba(15, 23, 42, 0.9);
+          background: rgba(15, 23, 42, 0.92);
           backdrop-filter: blur(8px);
           color: #ffffff;
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 800;
-          padding: 2px 7px;
-          border-radius: 10px;
-          margin-top: -2px;
+          padding: 2px 6px;
+          border-radius: 8px;
+          margin-top: 1px;
           white-space: nowrap;
           box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-          border: 1.5px solid #facc15;
+          border: 1px solid #facc15;
         ">
           ${plateNumber} (${speed} km/h)
         </div>
       </div>
     `,
-    iconSize: [110, 65],
-    iconAnchor: [55, 32]
+    iconSize: [100, 95],
+    iconAnchor: [50, 50]
   });
 };
 
-// 2. Yandex Yellow Floating ETA Speech Bubble (Exact match to uploaded image: "3 daq")
-const createYandexEtaBubbleIcon = (minutes: number) => {
-  return L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: `
-      <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transform: translate(-50%, -100%);
-      ">
-        <div style="
-          background: #fbbf24;
-          color: #0f172a;
-          font-weight: 900;
-          padding: 5px 14px;
-          border-radius: 16px;
-          box-shadow: 0 8px 20px rgba(251, 191, 36, 0.45);
-          text-align: center;
-          position: relative;
-          border: 2px solid #ffffff;
-        ">
-          <div style="font-size: 18px; line-height: 1.1; font-weight: 900;">${minutes}</div>
-          <div style="font-size: 11px; font-weight: 800; margin-top: -2px;">daq</div>
-          
-          <!-- Bottom Pointer Arrow -->
-          <div style="
-            position: absolute;
-            bottom: -7px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 7px solid transparent;
-            border-right: 7px solid transparent;
-            border-top: 7px solid #fbbf24;
-          "></div>
-        </div>
-
-        <!-- Target Pulse Circle below pointer -->
-        <div style="
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          background: #ffffff;
-          border: 4px solid #ea580c;
-          margin-top: 8px;
-          box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.25);
-        "></div>
-      </div>
-    `,
-    iconSize: [90, 80],
-    iconAnchor: [45, 75]
-  });
-};
-
-// 3. Yandex White Destination Speech Bubble (Exact match: "10:18 da yetib keladi")
+// 2. Yandex White Destination Speech Bubble ("07:55 da yetib keladi")
 const createYandexDestinationBubbleIcon = (timeStr: string) => {
   return L.divIcon({
     className: 'custom-leaflet-marker',
@@ -162,13 +136,13 @@ const createYandexDestinationBubbleIcon = (timeStr: string) => {
           background: #ffffff;
           color: #0f172a;
           font-weight: 800;
-          font-size: 13px;
-          padding: 7px 16px;
-          border-radius: 20px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+          font-size: 12px;
+          padding: 6px 14px;
+          border-radius: 18px;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.22);
           text-align: center;
           position: relative;
-          border: 1.5px solid #e2e8f0;
+          border: 1.5px solid #cbd5e1;
           white-space: nowrap;
         ">
           <span>${timeStr} da yetib keladi</span>
@@ -176,35 +150,35 @@ const createYandexDestinationBubbleIcon = (timeStr: string) => {
           <!-- Bottom Pointer Arrow -->
           <div style="
             position: absolute;
-            bottom: -7px;
+            bottom: -6px;
             left: 50%;
             transform: translateX(-50%);
             width: 0;
             height: 0;
-            border-left: 7px solid transparent;
-            border-right: 7px solid transparent;
-            border-top: 7px solid #ffffff;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #ffffff;
           "></div>
         </div>
 
         <!-- Destination Target Ring below pointer -->
         <div style="
-          width: 16px;
-          height: 16px;
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
           background: #ffffff;
-          border: 4px solid #475569;
-          margin-top: 7px;
-          box-shadow: 0 0 0 4px rgba(71, 85, 105, 0.25);
+          border: 3.5px solid #334155;
+          margin-top: 6px;
+          box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.2);
         "></div>
       </div>
     `,
-    iconSize: [180, 75],
-    iconAnchor: [90, 70]
+    iconSize: [160, 65],
+    iconAnchor: [80, 60]
   });
 };
 
-// Red Map Drop Pin Marker with Student Photo
+// 3. Red Map Drop Pin Marker with Student Photo
 const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: number) => {
   return L.divIcon({
     className: 'custom-leaflet-marker',
@@ -217,8 +191,8 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
       ">
         <!-- Red Map Pin Teardrop Shape -->
         <div style="
-          width: 46px;
-          height: 46px;
+          width: 44px;
+          height: 44px;
           border-radius: 50% 50% 50% 0;
           background: #ef4444;
           transform: rotate(-45deg);
@@ -226,11 +200,11 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
           align-items: center;
           justify-content: center;
           box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
-          border: 3px solid #dc2626;
+          border: 2.5px solid #dc2626;
         ">
           <img src="${photoUrl}" style="
-            width: 33px;
-            height: 33px;
+            width: 31px;
+            height: 31px;
             border-radius: 50%;
             transform: rotate(45deg);
             object-fit: cover;
@@ -242,11 +216,11 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
         <div style="
           background: #0f172a;
           color: #ffffff;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 800;
-          padding: 2px 8px;
-          border-radius: 12px;
-          margin-top: 5px;
+          padding: 2px 7px;
+          border-radius: 10px;
+          margin-top: 4px;
           white-space: nowrap;
           box-shadow: 0 2px 8px rgba(0,0,0,0.35);
           border: 1.5px solid white;
@@ -255,12 +229,11 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
         </div>
       </div>
     `,
-    iconSize: [140, 70],
-    iconAnchor: [70, 60]
+    iconSize: [130, 65],
+    iconAnchor: [65, 55]
   });
 };
 
-const schoolIcon = createCustomIcon('#2563eb', 'Nova Maktab', schoolSvg);
 const busIconSos = createCustomIcon('#dc2626', 'SOS - FAVQULODDA!', sosSvg);
 
 interface BusMapProps {
@@ -303,7 +276,7 @@ export default function BusMapContainer({
   buses = [],
   students = [],
   routeCoords = [],
-  center = [SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng],
+  center = [41.3400, 69.2650],
   zoom = 13,
   emergencyAlerts = [],
   routeAlerts = [],
@@ -317,18 +290,12 @@ export default function BusMapContainer({
     : ROUTE_STREET_PATHS[1] || [];
 
   // Break route into traffic condition segments (Green = Free, Yellow = Moderate, Red = Traffic Jam)
-  // Exact match to the uploaded Yandex Go image!
   const seg1 = fullRoutePath.slice(0, 5);
   const seg2 = fullRoutePath.slice(4, 8);
   const seg3 = fullRoutePath.slice(7, 11);
   const seg4 = fullRoutePath.slice(10, fullRoutePath.length);
 
-  const activeBus = buses[0];
-  const busLat = activeBus ? activeBus.lat : fullRoutePath[0]?.[0] || 41.3652;
-  const busLng = activeBus ? activeBus.lng : fullRoutePath[0]?.[1] || 69.2854;
-
   const destinationBubbleIcon = createYandexDestinationBubbleIcon("07:55");
-  const etaBubbleIcon = createYandexEtaBubbleIcon(3);
 
   return (
     <div style={{ height, width: '100%', borderRadius: '24px', overflow: 'hidden', zIndex: 1 }} className="shadow-2xl border border-slate-200 dark:border-slate-800 relative">
@@ -355,15 +322,12 @@ export default function BusMapContainer({
           </Popup>
         </Marker>
 
-        {/* 2. Yellow Floating ETA Bubble ("3 daq") at Bus Location */}
-        {activeBus && (
-          <Marker position={[busLat - 0.002, busLng - 0.002]} icon={etaBubbleIcon} />
-        )}
-
-        {/* 3. Top-Down Yellow Vehicles with Real Headings */}
+        {/* 2. Top-Down Yellow Vehicles with Integrated ETA Bubble ("3 daq") on top */}
         {buses.map(b => {
           const isSos = emergencyAlerts.some(e => e.vehicle_id === b.vehicle.id && e.status === 'active');
-          const currentIcon = isSos ? busIconSos : createTopDownBusIcon(b.vehicle.plate_number, b.speed, 35);
+          const currentIcon = isSos 
+            ? busIconSos 
+            : createYandexBusMarkerIcon(b.vehicle.plate_number, b.speed, 3, 165);
 
           return (
             <Marker key={b.vehicle.id} position={[b.lat, b.lng]} icon={currentIcon}>
@@ -392,7 +356,7 @@ export default function BusMapContainer({
           );
         })}
 
-        {/* 4. Student Home Markers with Red Pin and Child Photo */}
+        {/* 3. Student Home Markers with Red Pin and Child Photo */}
         {students.map((student, idx) => {
           if (!student.address) return null;
 
@@ -427,29 +391,29 @@ export default function BusMapContainer({
           );
         })}
 
-        {/* 5. Yandex Multi-Colored Traffic Polyline (Green - Amber - Red - Green) */}
+        {/* 4. Yandex Multi-Colored Traffic Polyline (Green - Amber - Red - Green) */}
         {seg1.length > 1 && (
           <Polyline 
             positions={seg1} 
-            pathOptions={{ color: '#22c55e', weight: 6.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
+            pathOptions={{ color: '#22c55e', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
           />
         )}
         {seg2.length > 1 && (
           <Polyline 
             positions={seg2} 
-            pathOptions={{ color: '#eab308', weight: 6.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
+            pathOptions={{ color: '#eab308', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
           />
         )}
         {seg3.length > 1 && (
           <Polyline 
             positions={seg3} 
-            pathOptions={{ color: '#ef4444', weight: 6.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
+            pathOptions={{ color: '#ef4444', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
           />
         )}
         {seg4.length > 1 && (
           <Polyline 
             positions={seg4} 
-            pathOptions={{ color: '#22c55e', weight: 6.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
+            pathOptions={{ color: '#22c55e', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
           />
         )}
       </MapContainer>

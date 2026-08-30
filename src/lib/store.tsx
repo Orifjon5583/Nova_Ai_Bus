@@ -126,8 +126,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [busLocations, setBusLocations] = useState<Record<number, LiveBusState>>({
     1: {
       vehicleId: 1,
-      lat: 41.3490,
-      lng: 69.2815,
+      lat: 41.3650,
+      lng: 69.2850,
       speed: 42,
       heading: 180,
       routeId: 1,
