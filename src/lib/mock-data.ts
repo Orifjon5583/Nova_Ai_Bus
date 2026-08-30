@@ -6,8 +6,8 @@ import {
 export const SCHOOL_LOCATION = {
   name: "Nova International AI School",
   address: "Urganch sh., Sanoatchilar ko'chasi, 9-0 uy (Ashxobod mahallasi)",
-  lat: 41.524061,
-  lng: 60.653853
+  lat: 41.5347,
+  lng: 60.5983
 };
 
 export const MOCK_USERS: User[] = [
@@ -278,7 +278,7 @@ const RAW_ROUTE_1_POINTS: Array<[number, number]> = [
   [41.5380, 60.6410], // 3-bekat: Ashxobod mahallasi / Xonqa yo'li (Jasur)
   [41.5320, 60.6470], // Sanoatchilar ko'chasiga burilish
   [41.5280, 60.6510], // Sanoatchilar ko'chasi bo'ylab
-  [41.524061, 60.653853] // Nova International AI School (9-0, Sanoatchilar ko'chasi)
+  [41.5347, 60.5983] // Nova International AI School (Urganch)
 ];
 
 function interpolateRoadPath(points: Array<[number, number]>, stepsBetween = 4): Array<[number, number]> {

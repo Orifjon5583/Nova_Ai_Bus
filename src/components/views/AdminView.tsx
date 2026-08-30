@@ -37,8 +37,8 @@ export default function AdminView() {
   const [isEditingSchool, setIsEditingSchool] = useState(false);
   const [schoolName, setSchoolName] = useState(schoolLocation?.name || "Nova International AI School");
   const [schoolAddress, setSchoolAddress] = useState(schoolLocation?.address || "Urganch sh., Sanoatchilar ko'chasi 9-0");
-  const [schoolLat, setSchoolLat] = useState(schoolLocation?.lat || 41.524061);
-  const [schoolLng, setSchoolLng] = useState(schoolLocation?.lng || 60.653853);
+  const [schoolLat, setSchoolLat] = useState(schoolLocation?.lat || 41.5347);
+  const [schoolLng, setSchoolLng] = useState(schoolLocation?.lng || 60.5983);
 
   // New Student Form State
   const [newFirstName, setNewFirstName] = useState('');
