@@ -1,43 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useEffect, useRef, useState } from 'react';
+import * as maptilersdk from '@maptiler/sdk';
+import '@maptiler/sdk/dist/maptiler-sdk.css';
 import { SCHOOL_LOCATION, ROUTE_STREET_PATHS } from '../../lib/mock-data';
 import { Student, Vehicle, RouteAlert, EmergencyAlert } from '../../types/database';
 import { fetchRealRoadRoute } from '../../lib/routing';
 
-// SVG Icon Strings for Leaflet divIcon HTML rendering
-const schoolSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 22V6l-6-4-6 4v16"/><path d="M6 12h12"/><path d="M6 16h12"/></svg>`;
-const sosSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-
-const createCustomIcon = (color: string, label: string, svgHtml: string) => {
-  return L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: `
-      <div style="
-        background-color: ${color};
-        color: white;
-        border-radius: 20px;
-        padding: 4px 10px;
-        font-weight: bold;
-        font-size: 12px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-        border: 2px solid white;
-      ">
-        <span style="display: flex; align-items: center;">${svgHtml}</span>
-        <span>${label}</span>
-      </div>
-    `,
-    iconSize: [130, 35],
-    iconAnchor: [65, 17]
-  });
-};
+const MAPTILER_KEY = 'GWgqgaHGL6LiYlf1JeDi';
+maptilersdk.config.apiKey = MAPTILER_KEY;
 
 // Calculate heading angle in degrees along road tangent
 function calculateHeading(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -49,216 +20,6 @@ function calculateHeading(lat1: number, lng1: number, lat2: number, lng2: number
   const brng = Math.atan2(y, x) * 180 / Math.PI;
   return (brng + 360) % 360;
 }
-
-// 1. Pixel-Perfect Yandex Vehicle with Integrated "3 daq" ETA Bubble on top (100% centered on road line)
-const createYandexBusMarkerIcon = (plateNumber: string, speed: number, etaMinutes = 3, heading = 0) => {
-  return L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: `
-      <div style="
-        width: 120px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 0;
-        padding: 0;
-      ">
-        <!-- 1. Yellow ETA Bubble on top of the car -->
-        <div style="
-          background: #fbbf24;
-          color: #0f172a;
-          font-weight: 900;
-          padding: 3px 10px;
-          border-radius: 12px;
-          box-shadow: 0 4px 12px rgba(251, 191, 36, 0.45);
-          text-align: center;
-          position: relative;
-          border: 2px solid #ffffff;
-          margin-bottom: 2px;
-        ">
-          <div style="font-size: 13px; line-height: 1.1; font-weight: 900;">${etaMinutes}</div>
-          <div style="font-size: 9px; font-weight: 800; margin-top: -2px;">daq</div>
-          
-          <!-- Bottom Pointer Arrow -->
-          <div style="
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid #fbbf24;
-          "></div>
-        </div>
-
-        <!-- 2. Top-Down Yellow Vehicle SVG centered at X=60px, Y=53px -->
-        <div style="
-          width: 38px;
-          height: 38px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform: rotate(${heading}deg);
-          filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));
-          transition: transform 0.3s ease;
-        ">
-          <svg width="38" height="38" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="25" y="10" width="50" height="80" rx="18" fill="#facc15" stroke="#ca8a04" stroke-width="4"/>
-            <rect x="32" y="28" width="36" height="44" rx="8" fill="#eab308"/>
-            <path d="M33 28 C33 20 67 20 67 28 L64 36 L36 36 Z" fill="#0f172a"/>
-            <path d="M36 64 L64 64 L67 72 C67 80 33 80 33 72 Z" fill="#0f172a"/>
-            <rect x="29" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
-            <rect x="66" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
-            <rect x="28" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
-            <rect x="62" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
-            <rect x="28" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
-            <rect x="62" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
-          </svg>
-        </div>
-
-        <!-- 3. Plate & Speed pill badge -->
-        <div style="
-          background: rgba(15, 23, 42, 0.95);
-          backdrop-filter: blur(8px);
-          color: #ffffff;
-          font-size: 9px;
-          font-weight: 800;
-          padding: 2px 6px;
-          border-radius: 8px;
-          margin-top: 1px;
-          white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-          border: 1px solid #facc15;
-        ">
-          ${plateNumber} (${speed} km/h)
-        </div>
-      </div>
-    `,
-    iconSize: [120, 88],
-    iconAnchor: [60, 53] // Center of the 38x38 car SVG is at X=60px, Y=53px!
-  });
-};
-
-// 2. Yandex White Destination Speech Bubble ("07:55 da yetib keladi")
-const createYandexDestinationBubbleIcon = (timeStr: string) => {
-  return L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: `
-      <div style="
-        width: 160px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 0;
-        padding: 0;
-      ">
-        <div style="
-          background: #ffffff;
-          color: #0f172a;
-          font-weight: 800;
-          font-size: 12px;
-          padding: 5px 12px;
-          border-radius: 16px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.22);
-          text-align: center;
-          position: relative;
-          border: 1.5px solid #cbd5e1;
-          white-space: nowrap;
-        ">
-          <span>${timeStr} da yetib keladi</span>
-          
-          <!-- Bottom Pointer Arrow -->
-          <div style="
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid #ffffff;
-          "></div>
-        </div>
-
-        <!-- Destination Target Ring below pointer -->
-        <div style="
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          background: #ffffff;
-          border: 3.5px solid #334155;
-          margin-top: 5px;
-          box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.2);
-        "></div>
-      </div>
-    `,
-    iconSize: [160, 50],
-    iconAnchor: [80, 43]
-  });
-};
-
-// 3. Red Map Drop Pin Marker with Student Photo
-const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: number) => {
-  return L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: `
-      <div style="
-        width: 120px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 0;
-        padding: 0;
-      ">
-        <!-- Red Map Pin Teardrop Shape -->
-        <div style="
-          width: 42px;
-          height: 42px;
-          border-radius: 50% 50% 50% 0;
-          background: #ef4444;
-          transform: rotate(-45deg);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 6px 14px rgba(239, 68, 68, 0.5);
-          border: 2px solid #dc2626;
-        ">
-          <img src="${photoUrl}" style="
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            transform: rotate(45deg);
-            object-fit: cover;
-            border: 2px solid white;
-            background: #ffffff;
-          " alt="${name}" />
-        </div>
-        
-        <div style="
-          background: #0f172a;
-          color: #ffffff;
-          font-size: 10px;
-          font-weight: 800;
-          padding: 2px 7px;
-          border-radius: 10px;
-          margin-top: 2px;
-          white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-          border: 1.5px solid white;
-        ">
-          ${orderNumber}-bekat: ${name}
-        </div>
-      </div>
-    `,
-    iconSize: [120, 68],
-    iconAnchor: [60, 42]
-  });
-};
-
-const busIconSos = createCustomIcon('#dc2626', 'SOS - FAVQULODDA!', sosSvg);
 
 interface BusMapProps {
   buses?: Array<{
@@ -278,25 +39,6 @@ interface BusMapProps {
   onMapClick?: (lat: number, lng: number) => void;
 }
 
-function MapRecenter({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center);
-  }, [center, map]);
-  return null;
-}
-
-function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      if (onMapClick) {
-        onMapClick(e.latlng.lat, e.latlng.lng);
-      }
-    }
-  });
-  return null;
-}
-
 export default function BusMapContainer({
   buses = [],
   students = [],
@@ -308,15 +50,21 @@ export default function BusMapContainer({
   height = '450px',
   onMapClick
 }: BusMapProps) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<maptilersdk.Map | null>(null);
+  const busMarkersRef = useRef<Record<number, maptilersdk.Marker>>({});
+  const studentMarkersRef = useRef<maptilersdk.Marker[]>([]);
+  const schoolMarkerRef = useRef<maptilersdk.Marker | null>(null);
 
-  // Dynamic high-precision road path state from OSRM backend engine
+  // Dynamic high-precision road path state from MapTiler Directions engine
   const [roadCoordinates, setRoadCoordinates] = useState<Array<[number, number]>>(
     routeCoords.length > 0 ? routeCoords : ROUTE_STREET_PATHS[1] || []
   );
 
-  // Synchronized movement index along the exact OSRM road coordinates
+  // Synchronized movement index along the exact MapTiler road coordinates
   const [activeCarPathIndex, setActiveCarPathIndex] = useState(0);
 
+  // 1. Fetch MapTiler Directions Turn-by-Turn Road Geometry
   useEffect(() => {
     let isMounted = true;
     const waypoints: Array<[number, number]> = routeCoords.length > 0 
@@ -336,7 +84,282 @@ export default function BusMapContainer({
     return () => { isMounted = false; };
   }, [students, routeCoords]);
 
-  // Advance car index smoothly along the exact roadCoordinates polyline array
+  // 2. Initialize MapTiler Vector Map
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    // Center in [lng, lat] for MapTiler / MapLibre GL
+    const initialCenter: [number, number] = [center[1], center[0]];
+
+    const map = new maptilersdk.Map({
+      container: mapContainerRef.current,
+      style: maptilersdk.MapStyle.STREETS,
+      center: initialCenter,
+      zoom: zoom,
+      pitch: 28, // Modern 3D view angle
+      bearing: 0,
+      navigationControl: 'bottom-right',
+      geolocateControl: false
+    });
+
+    mapInstanceRef.current = map;
+
+    map.on('click', (e) => {
+      if (onMapClick) {
+        onMapClick(e.lngLat.lat, e.lngLat.lng);
+      }
+    });
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, []);
+
+  // 3. Update Map Center & Zoom dynamically
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.easeTo({
+        center: [center[1], center[0]],
+        zoom: zoom,
+        duration: 1000
+      });
+    }
+  }, [center, zoom]);
+
+  // 4. Draw MapTiler Directions Traffic Polylines (GeoJSON Layers)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const onStyleLoad = () => {
+      if (roadCoordinates.length < 2) return;
+
+      // Convert [lat, lng] to [lng, lat] for MapTiler GeoJSON
+      const geoPoints = roadCoordinates.map(([lat, lng]) => [lng, lat]);
+      const segLength = Math.max(2, Math.floor(geoPoints.length / 4));
+      
+      const seg1 = geoPoints.slice(0, segLength + 1);
+      const seg2 = geoPoints.slice(segLength, segLength * 2 + 1);
+      const seg3 = geoPoints.slice(segLength * 2, segLength * 3 + 1);
+      const seg4 = geoPoints.slice(segLength * 3, geoPoints.length);
+
+      const segments = [
+        { id: 'traffic-seg-1', data: seg1, color: '#22c55e' }, // Green
+        { id: 'traffic-seg-2', data: seg2, color: '#eab308' }, // Yellow
+        { id: 'traffic-seg-3', data: seg3, color: '#ef4444' }, // Red
+        { id: 'traffic-seg-4', data: seg4, color: '#22c55e' }  // Green
+      ];
+
+      segments.forEach(seg => {
+        // Remove existing layers and sources if present
+        if (map.getLayer(seg.id)) map.removeLayer(seg.id);
+        if (map.getLayer(`${seg.id}-glow`)) map.removeLayer(`${seg.id}-glow`);
+        if (map.getSource(seg.id)) map.removeSource(seg.id);
+
+        if (seg.data.length > 1) {
+          map.addSource(seg.id, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: seg.data
+              }
+            }
+          });
+
+          // Glow outline casing
+          map.addLayer({
+            id: `${seg.id}-glow`,
+            type: 'line',
+            source: seg.id,
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': 8,
+              'line-opacity': 0.8
+            }
+          });
+
+          // Core traffic color line
+          map.addLayer({
+            id: seg.id,
+            type: 'line',
+            source: seg.id,
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': seg.color,
+              'line-width': 5,
+              'line-opacity': 0.95
+            }
+          });
+        }
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      onStyleLoad();
+    } else {
+      map.on('load', onStyleLoad);
+    }
+  }, [roadCoordinates]);
+
+  // 5. Render School Marker ("07:55 da yetib keladi")
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (schoolMarkerRef.current) {
+      schoolMarkerRef.current.remove();
+    }
+
+    const schoolEl = document.createElement('div');
+    schoolEl.className = 'maptiler-school-marker';
+    schoolEl.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transform: translateY(-8px);
+      ">
+        <div style="
+          background: #ffffff;
+          color: #0f172a;
+          font-weight: 800;
+          font-size: 12px;
+          padding: 5px 12px;
+          border-radius: 16px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+          text-align: center;
+          position: relative;
+          border: 1.5px solid #cbd5e1;
+          white-space: nowrap;
+        ">
+          <span>07:55 da yetib keladi</span>
+          <div style="
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #ffffff;
+          "></div>
+        </div>
+        <div style="
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 3.5px solid #334155;
+          margin-top: 5px;
+          box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.2);
+        "></div>
+      </div>
+    `;
+
+    const marker = new maptilersdk.Marker({ element: schoolEl, anchor: 'bottom' })
+      .setLngLat([SCHOOL_LOCATION.lng, SCHOOL_LOCATION.lat])
+      .setPopup(new maptilersdk.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 4px;">
+          <h4 style="font-weight: bold; color: #2563eb; margin: 0;">${SCHOOL_LOCATION.name}</h4>
+          <p style="font-size: 11px; color: #64748b; margin-top: 4px;">${SCHOOL_LOCATION.address}</p>
+        </div>
+      `))
+      .addTo(map);
+
+    schoolMarkerRef.current = marker;
+  }, []);
+
+  // 6. Render Student Home Photo Pins
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    studentMarkersRef.current.forEach(m => m.remove());
+    studentMarkersRef.current = [];
+
+    students.forEach((student, idx) => {
+      if (!student.address) return;
+
+      const studentEl = document.createElement('div');
+      studentEl.className = 'maptiler-student-marker';
+      studentEl.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        ">
+          <div style="
+            width: 40px;
+            height: 40px;
+            border-radius: 50% 50% 50% 0;
+            background: #ef4444;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 14px rgba(239, 68, 68, 0.5);
+            border: 2px solid #dc2626;
+          ">
+            <img src="${student.photo_url}" style="
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              transform: rotate(45deg);
+              object-fit: cover;
+              border: 2px solid white;
+              background: #ffffff;
+            " alt="${student.first_name}" />
+          </div>
+          <div style="
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 10px;
+            margin-top: 2px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+            border: 1.5px solid white;
+          ">
+            ${idx + 1}-bekat: ${student.first_name}
+          </div>
+        </div>
+      `;
+
+      const marker = new maptilersdk.Marker({ element: studentEl, anchor: 'bottom' })
+        .setLngLat([student.address.longitude, student.address.latitude])
+        .setPopup(new maptilersdk.Popup({ offset: 25 }).setHTML(`
+          <div style="padding: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <img src="${student.photo_url}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />
+              <div>
+                <h4 style="font-weight: bold; margin: 0; font-size: 13px;">${student.first_name} ${student.last_name}</h4>
+                <p style="font-size: 11px; color: #4f46e5; margin: 0;">${student.class_name}</p>
+              </div>
+            </div>
+            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;"><strong>Manzil:</strong> ${student.address.address_text}</p>
+          </div>
+        `))
+        .addTo(map);
+
+      studentMarkersRef.current.push(marker);
+    });
+  }, [students]);
+
+  // 7. Advance car step-by-step along the exact MapTiler road coordinates
   useEffect(() => {
     if (roadCoordinates.length === 0) return;
     const interval = setInterval(() => {
@@ -345,143 +368,123 @@ export default function BusMapContainer({
     return () => clearInterval(interval);
   }, [roadCoordinates]);
 
-  // Break real road into traffic condition segments (Green = Free, Yellow = Moderate, Red = Traffic Jam)
-  const segLength = Math.max(2, Math.floor(roadCoordinates.length / 4));
-  const seg1 = roadCoordinates.slice(0, segLength + 1);
-  const seg2 = roadCoordinates.slice(segLength, segLength * 2 + 1);
-  const seg3 = roadCoordinates.slice(segLength * 2, segLength * 3 + 1);
-  const seg4 = roadCoordinates.slice(segLength * 3, roadCoordinates.length);
+  // 8. Render & Animate Vehicle Marker on MapTiler Polyline
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || buses.length === 0 || roadCoordinates.length === 0) return;
 
-  const destinationBubbleIcon = createYandexDestinationBubbleIcon("07:55");
+    buses.forEach(b => {
+      const isSos = emergencyAlerts.some(e => e.vehicle_id === b.vehicle.id && e.status === 'active');
+      
+      const curIndex = activeCarPathIndex % roadCoordinates.length;
+      const nextIndex = (curIndex + 1) % roadCoordinates.length;
+      const currentPos = roadCoordinates[curIndex] || [b.lat, b.lng];
+      const nextPos = roadCoordinates[nextIndex] || currentPos;
+      const heading = calculateHeading(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
+
+      let marker = busMarkersRef.current[b.vehicle.id];
+
+      if (!marker) {
+        const carEl = document.createElement('div');
+        carEl.className = `maptiler-bus-marker-${b.vehicle.id}`;
+        carEl.style.width = '120px';
+        carEl.style.display = 'flex';
+        carEl.style.flexDirection = 'column';
+        carEl.style.alignItems = 'center';
+        carEl.style.cursor = 'pointer';
+
+        marker = new maptilersdk.Marker({ element: carEl, anchor: 'center' })
+          .setLngLat([currentPos[1], currentPos[0]])
+          .addTo(map);
+
+        busMarkersRef.current[b.vehicle.id] = marker;
+      }
+
+      // Smoothly update position on MapTiler map
+      marker.setLngLat([currentPos[1], currentPos[0]]);
+
+      // Update inner graphic HTML with heading rotation
+      const carEl = marker.getElement();
+      carEl.innerHTML = `
+        <!-- Yellow ETA Bubble attached directly on top of the car -->
+        <div style="
+          background: #fbbf24;
+          color: #0f172a;
+          font-weight: 900;
+          padding: 3px 10px;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(251, 191, 36, 0.45);
+          text-align: center;
+          position: relative;
+          border: 2px solid #ffffff;
+          margin-bottom: 2px;
+        ">
+          <div style="font-size: 13px; line-height: 1.1; font-weight: 900;">3</div>
+          <div style="font-size: 9px; font-weight: 800; margin-top: -2px;">daq</div>
+          <div style="
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #fbbf24;
+          "></div>
+        </div>
+
+        <!-- Top-Down Yellow Vehicle SVG rotated along MapTiler road tangent -->
+        <div style="
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform: rotate(${heading}deg);
+          filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));
+          transition: transform 0.4s ease;
+        ">
+          <svg width="38" height="38" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="25" y="10" width="50" height="80" rx="18" fill="#facc15" stroke="#ca8a04" stroke-width="4"/>
+            <rect x="32" y="28" width="36" height="44" rx="8" fill="#eab308"/>
+            <path d="M33 28 C33 20 67 20 67 28 L64 36 L36 36 Z" fill="#0f172a"/>
+            <path d="M36 64 L64 64 L67 72 C67 80 33 80 33 72 Z" fill="#0f172a"/>
+            <rect x="29" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
+            <rect x="66" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
+            <rect x="28" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
+            <rect x="62" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
+            <rect x="28" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
+            <rect x="62" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
+          </svg>
+        </div>
+
+        <!-- Plate & Speed badge -->
+        <div style="
+          background: ${isSos ? '#dc2626' : 'rgba(15, 23, 42, 0.95)'};
+          backdrop-filter: blur(8px);
+          color: #ffffff;
+          font-size: 9px;
+          font-weight: 800;
+          padding: 2px 6px;
+          border-radius: 8px;
+          margin-top: 1px;
+          white-space: nowrap;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+          border: 1px solid #facc15;
+        ">
+          ${isSos ? '🚨 SOS' : `${b.vehicle.plate_number} (${b.speed} km/h)`}
+        </div>
+      `;
+    });
+  }, [buses, activeCarPathIndex, roadCoordinates, emergencyAlerts]);
 
   return (
-    <div style={{ height, width: '100%', borderRadius: '24px', overflow: 'hidden', zIndex: 1 }} className="shadow-2xl border border-slate-200 dark:border-slate-800 relative">
-      <MapContainer 
-        center={center} 
-        zoom={zoom} 
-        scrollWheelZoom={true} 
-        style={{ height: '100%', width: '100%' }}
-      >
-        <MapRecenter center={center} />
-        <MapClickHandler onMapClick={onMapClick} />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {/* 1. Destination Bubble Pin at Nova Maktab */}
-        <Marker position={[SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng]} icon={destinationBubbleIcon}>
-          <Popup>
-            <div className="p-1">
-              <h4 className="font-bold text-blue-600 text-sm">{SCHOOL_LOCATION.name}</h4>
-              <p className="text-xs text-slate-600 mt-1">{SCHOOL_LOCATION.address}</p>
-            </div>
-          </Popup>
-        </Marker>
-
-        {/* 2. Top-Down Yellow Vehicles advancing in real-time strictly on the exact OSRM polyline */}
-        {buses.map(b => {
-          const isSos = emergencyAlerts.some(e => e.vehicle_id === b.vehicle.id && e.status === 'active');
-          
-          // Position strictly derived from the exact same roadCoordinates array that is drawn as the line!
-          const curIndex = activeCarPathIndex % roadCoordinates.length;
-          const nextIndex = (curIndex + 1) % roadCoordinates.length;
-          const currentPos = roadCoordinates[curIndex] || [b.lat, b.lng];
-          const nextPos = roadCoordinates[nextIndex] || currentPos;
-          const heading = calculateHeading(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
-
-          const currentIcon = isSos 
-            ? busIconSos 
-            : createYandexBusMarkerIcon(b.vehicle.plate_number, b.speed, 3, heading);
-
-          return (
-            <Marker key={b.vehicle.id} position={currentPos} icon={currentIcon}>
-              <Popup>
-                <div className="p-2 min-w-[200px]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
-                      <span dangerouslySetInnerHTML={{ __html: schoolSvg }} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{b.vehicle.vehicle_name}</h4>
-                      <p className="text-xs font-semibold text-emerald-600">{b.vehicle.plate_number}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1 text-xs text-slate-600 border-t pt-2">
-                    <p><strong>Hozirgi tezlik:</strong> {b.speed} km/h</p>
-                    <p><strong>Koordinatalar:</strong> {currentPos[0].toFixed(4)}, {currentPos[1].toFixed(4)}</p>
-                    <p><strong>Sig'imi:</strong> {b.vehicle.capacity} o'quvchi</p>
-                    {isSos && (
-                      <p className="text-red-600 font-bold bg-red-50 p-1 rounded mt-1">FAVQULODDA SOS SIZGA KELDI</p>
-                    )}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-
-        {/* 3. Student Home Markers with Red Pin and Child Photo */}
-        {students.map((student, idx) => {
-          if (!student.address) return null;
-
-          const studentIcon = createStudentPhotoPinIcon(student.photo_url, student.first_name, idx + 1);
-
-          return (
-            <Marker 
-              key={student.id} 
-              position={[student.address.latitude, student.address.longitude]} 
-              icon={studentIcon}
-            >
-              <Popup>
-                <div className="p-2">
-                  <div className="flex items-center gap-2.5 mb-1">
-                    <img 
-                      src={student.photo_url} 
-                      alt={student.first_name} 
-                      className="w-10 h-10 rounded-full object-cover border-2 border-red-500 shadow"
-                    />
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{student.first_name} {student.last_name}</h4>
-                      <p className="text-xs text-indigo-600 font-medium">{student.class_name}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-600 mt-1"><strong>Manzil:</strong> {student.address.address_text}</p>
-                  {student.address.pickup_note && (
-                    <p className="text-xs text-amber-700 bg-amber-50 p-1 rounded mt-1">📌 {student.address.pickup_note}</p>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-
-        {/* 4. Real OSRM Road Traffic-Colored Polyline (Green - Amber - Red - Green) */}
-        {seg1.length > 1 && (
-          <Polyline 
-            positions={seg1} 
-            pathOptions={{ color: '#22c55e', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
-          />
-        )}
-        {seg2.length > 1 && (
-          <Polyline 
-            positions={seg2} 
-            pathOptions={{ color: '#eab308', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
-          />
-        )}
-        {seg3.length > 1 && (
-          <Polyline 
-            positions={seg3} 
-            pathOptions={{ color: '#ef4444', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
-          />
-        )}
-        {seg4.length > 1 && (
-          <Polyline 
-            positions={seg4} 
-            pathOptions={{ color: '#22c55e', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
-          />
-        )}
-      </MapContainer>
+    <div 
+      style={{ height, width: '100%', borderRadius: '24px', overflow: 'hidden', zIndex: 1 }} 
+      className="shadow-2xl border border-slate-200 dark:border-slate-800 relative bg-slate-950"
+    >
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
