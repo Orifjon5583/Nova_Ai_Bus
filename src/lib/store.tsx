@@ -61,6 +61,9 @@ interface SystemContextType {
   confirmStudentAddress: (studentId: number, addressText: string, lat: number, lng: number, pickupNote?: string) => void;
   resetStudentAddressRequest: (studentId: number) => void;
   
+  // Location Route Optimization
+  optimizeRouteByLocations: (routeId: number) => void;
+
   // Admin actions
   addStudent: (newStudent: Omit<Student, 'id' | 'created_at'>, addressText: string, lat: number, lng: number) => void;
   updateStudent: (student: Student) => void;
@@ -345,6 +348,42 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setNotifications(prev => [reNotice, ...prev]);
   };
 
+  // Dynamically optimize student sequence based on their geographical locations towards the school
+  const optimizeRouteByLocations = (routeId: number) => {
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return parseFloat((R * c).toFixed(2));
+    };
+
+    setStudents(prev => {
+      const sorted = [...prev].sort((a, b) => {
+        if (!a.address) return 1;
+        if (!b.address) return -1;
+        const distA = calculateDistance(a.address.latitude, a.address.longitude, SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng);
+        const distB = calculateDistance(b.address.latitude, b.address.longitude, SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng);
+        return distB - distA; // Farthest student is 1-bekat
+      });
+      return sorted;
+    });
+
+    const optLog: AuditLog = {
+      id: Date.now(),
+      action: 'ROUTE_DYNAMICALLY_OPTIMIZED_BY_LOCATIONS',
+      table_name: 'routes',
+      record_id: routeId,
+      new_data: JSON.stringify({ message: "O'quvchilarning real GPS lokatsiyalari bo'yicha eng optimal pikap ketma-ketligi qayta tuzildi" }),
+      created_at: new Date().toISOString()
+    };
+    setAuditLogs(prev => [optLog, ...prev]);
+  };
+
   const confirmStudentPickup = (studentId: number, method: 'qr' | 'face' | 'manual') => {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
@@ -625,6 +664,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updateBusLocationManually,
       confirmStudentAddress,
       resetStudentAddressRequest,
+      optimizeRouteByLocations,
       addStudent,
       updateStudent,
       updateStudentLocation,
