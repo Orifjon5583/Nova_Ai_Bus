@@ -5,7 +5,7 @@ import { useSystem } from '../../lib/store';
 import { UserRole } from '../../types/database';
 import { 
   Bus, Shield, User, Bell, ChevronDown, CheckCircle, AlertTriangle, 
-  MapPin, Clock, Phone, Smartphone, Monitor, ShieldAlert, LogOut, KeyRound, UserCheck, Sparkles, Check
+  MapPin, Clock, Phone, Smartphone, Monitor, ShieldAlert, LogOut, KeyRound, UserCheck, Sparkles, Check, Navigation, Map
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -57,10 +57,19 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* User Profile, Role & Actions (Strict Isolation - No Open Switcher Tabs) */}
+        {/* User Profile, Role & Actions */}
         {mounted && currentUser ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             
+            {/* Direct Live Map Page Navigation Link */}
+            <a
+              href="/map"
+              className="px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-blue-600/30 border border-white/20 transition flex items-center gap-1.5 active:scale-95"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Jonli Xarita</span>
+            </a>
+
             {/* Notification Bell Dropdown */}
             <div className="relative">
               <button
