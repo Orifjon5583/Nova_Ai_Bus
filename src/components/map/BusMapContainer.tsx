@@ -54,7 +54,7 @@ export default function BusMapContainer({
 }: BusMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maptilersdk.Map | null>(null);
-  const busMarkersRef = useRef<Record<number, maptilersdk.Marker>>({});
+  const busMarkerRef = useRef<maptilersdk.Marker | null>(null);
   const studentMarkersRef = useRef<maptilersdk.Marker[]>([]);
   const schoolMarkerRef = useRef<maptilersdk.Marker | null>(null);
 
@@ -65,6 +65,15 @@ export default function BusMapContainer({
 
   // Synchronized movement index along the exact MapTiler road coordinates
   const [activeCarPathIndex, setActiveCarPathIndex] = useState(0);
+
+  // Default active bus vehicle info
+  const effectiveBus = (buses && buses.length > 0) ? buses[0] : {
+    vehicle: { id: 1, plate_number: '01 777 NVA', vehicle_name: 'Nova Bus #1', capacity: 24, model: 'Isuzu HD' } as Vehicle,
+    lat: 41.5620,
+    lng: 60.6120,
+    speed: 42,
+    heading: 140
+  };
 
   // 1. Fetch MapTiler Directions Turn-by-Turn Road Geometry
   useEffect(() => {
@@ -86,7 +95,7 @@ export default function BusMapContainer({
     return () => { isMounted = false; };
   }, [students, routeCoords]);
 
-  // 2. Initialize 2D Flat MapTiler Vector Map (Optimized for mobile phones and driver navigator)
+  // 2. Initialize 2D Flat MapTiler Vector Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -98,9 +107,9 @@ export default function BusMapContainer({
       style: maptilersdk.MapStyle.STREETS,
       center: initialCenter,
       zoom: zoom,
-      pitch: 0, // 2D flat top-down view (Lightweight & high clarity on mobile screens)
+      pitch: 0, // 2D flat view for clear mobile navigation
       bearing: 0,
-      touchPitch: false, // Prevent accidental 3D tilt on phone touch screens
+      touchPitch: false,
       navigationControl: 'bottom-right',
       geolocateControl: false
     });
@@ -114,12 +123,15 @@ export default function BusMapContainer({
     });
 
     return () => {
+      if (busMarkerRef.current) busMarkerRef.current.remove();
+      if (schoolMarkerRef.current) schoolMarkerRef.current.remove();
+      studentMarkersRef.current.forEach(m => m.remove());
       map.remove();
       mapInstanceRef.current = null;
     };
   }, []);
 
-  // 3. Update Map Center & Zoom dynamically (or Follow Bus if enabled)
+  // 3. Update Map Center & Zoom
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -141,7 +153,6 @@ export default function BusMapContainer({
     const onStyleLoad = () => {
       if (roadCoordinates.length < 2) return;
 
-      // Convert [lat, lng] to [lng, lat] for MapTiler GeoJSON
       const geoPoints = roadCoordinates.map(([lat, lng]) => [lng, lat]);
       const segLength = Math.max(2, Math.floor(geoPoints.length / 4));
       
@@ -158,7 +169,6 @@ export default function BusMapContainer({
       ];
 
       segments.forEach(seg => {
-        // Remove existing layers and sources if present
         if (map.getLayer(seg.id)) map.removeLayer(seg.id);
         if (map.getLayer(`${seg.id}-glow`)) map.removeLayer(`${seg.id}-glow`);
         if (map.getSource(seg.id)) map.removeSource(seg.id);
@@ -176,7 +186,7 @@ export default function BusMapContainer({
             }
           });
 
-          // Outer white casing for high 2D readability on mobile
+          // Outer casing
           map.addLayer({
             id: `${seg.id}-glow`,
             type: 'line',
@@ -192,7 +202,7 @@ export default function BusMapContainer({
             }
           });
 
-          // Core traffic color line
+          // Main line
           map.addLayer({
             id: seg.id,
             type: 'line',
@@ -228,50 +238,43 @@ export default function BusMapContainer({
     }
 
     const schoolEl = document.createElement('div');
-    schoolEl.className = 'maptiler-school-marker';
+    schoolEl.style.cssText = 'display: flex; flex-direction: column; align-items: center; cursor: pointer; transform: translateY(-4px); z-index: 40;';
     schoolEl.innerHTML = `
       <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transform: translateY(-6px);
+        background: #ffffff;
+        color: #0f172a;
+        font-weight: 900;
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        text-align: center;
+        position: relative;
+        border: 2px solid #3b82f6;
+        white-space: nowrap;
       ">
+        <span>07:55 da yetib keladi</span>
         <div style="
-          background: #ffffff;
-          color: #0f172a;
-          font-weight: 800;
-          font-size: 11px;
-          padding: 4px 10px;
-          border-radius: 14px;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.22);
-          text-align: center;
-          position: relative;
-          border: 1.5px solid #cbd5e1;
-          white-space: nowrap;
-        ">
-          <span>07:55 da yetib keladi</span>
-          <div style="
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid #ffffff;
-          "></div>
-        </div>
-        <div style="
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: #ffffff;
-          border: 3px solid #334155;
-          margin-top: 4px;
-          box-shadow: 0 0 0 2px rgba(51, 65, 85, 0.2);
+          position: absolute;
+          bottom: -5px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-top: 5px solid #3b82f6;
         "></div>
       </div>
+      <div style="
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #3b82f6;
+        border: 2.5px solid #ffffff;
+        margin-top: 4px;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+      "></div>
     `;
 
     const marker = new maptilersdk.Marker({ element: schoolEl, anchor: 'bottom' })
@@ -299,49 +302,43 @@ export default function BusMapContainer({
       if (!student.address) return;
 
       const studentEl = document.createElement('div');
-      studentEl.className = 'maptiler-student-marker';
+      studentEl.style.cssText = 'display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 35;';
       studentEl.innerHTML = `
         <div style="
+          width: 36px;
+          height: 36px;
+          border-radius: 50% 50% 50% 0;
+          background: #ef4444;
+          transform: rotate(-45deg);
           display: flex;
-          flex-direction: column;
           align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+          border: 2px solid #dc2626;
         ">
-          <div style="
-            width: 36px;
-            height: 36px;
-            border-radius: 50% 50% 50% 0;
-            background: #ef4444;
-            transform: rotate(-45deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.45);
-            border: 2px solid #dc2626;
-          ">
-            <img src="${student.photo_url}" style="
-              width: 25px;
-              height: 25px;
-              border-radius: 50%;
-              transform: rotate(45deg);
-              object-fit: cover;
-              border: 1.5px solid white;
-              background: #ffffff;
-            " alt="${student.first_name}" />
-          </div>
-          <div style="
-            background: #0f172a;
-            color: #ffffff;
-            font-size: 9px;
-            font-weight: 800;
-            padding: 1.5px 6px;
-            border-radius: 8px;
-            margin-top: 2px;
-            white-space: nowrap;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            border: 1px solid white;
-          ">
-            ${idx + 1}-bekat: ${student.first_name}
-          </div>
+          <img src="${student.photo_url}" style="
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            transform: rotate(45deg);
+            object-fit: cover;
+            border: 1.5px solid white;
+            background: #ffffff;
+          " alt="${student.first_name}" />
+        </div>
+        <div style="
+          background: #0f172a;
+          color: #ffffff;
+          font-size: 9px;
+          font-weight: 800;
+          padding: 1.5px 6px;
+          border-radius: 8px;
+          margin-top: 2px;
+          white-space: nowrap;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          border: 1px solid white;
+        ">
+          ${idx + 1}-bekat: ${student.first_name}
         </div>
       `;
 
@@ -374,124 +371,116 @@ export default function BusMapContainer({
     return () => clearInterval(interval);
   }, [roadCoordinates]);
 
-  // 8. Render & Animate Vehicle Marker on MapTiler Polyline with Smooth 2D Heading
+  // 8. Render & Animate Vehicle Marker on MapTiler Polyline (100% visible with high z-index)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || buses.length === 0 || roadCoordinates.length === 0) return;
+    if (!map || roadCoordinates.length === 0) return;
 
-    buses.forEach(b => {
-      const isSos = emergencyAlerts.some(e => e.vehicle_id === b.vehicle.id && e.status === 'active');
-      
-      const curIndex = activeCarPathIndex % roadCoordinates.length;
-      const nextIndex = (curIndex + 1) % roadCoordinates.length;
-      const currentPos = roadCoordinates[curIndex] || [b.lat, b.lng];
-      const nextPos = roadCoordinates[nextIndex] || currentPos;
-      const heading = calculateHeading(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
+    const isSos = emergencyAlerts.some(e => e.vehicle_id === effectiveBus.vehicle.id && e.status === 'active');
+    const curIndex = activeCarPathIndex % roadCoordinates.length;
+    const nextIndex = (curIndex + 1) % roadCoordinates.length;
+    const currentPos = roadCoordinates[curIndex] || [effectiveBus.lat, effectiveBus.lng];
+    const nextPos = roadCoordinates[nextIndex] || currentPos;
+    const heading = calculateHeading(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
 
-      let marker = busMarkersRef.current[b.vehicle.id];
+    if (!busMarkerRef.current) {
+      const carEl = document.createElement('div');
+      carEl.className = 'maptiler-bus-marker';
+      carEl.style.cssText = 'width: 120px; display: flex; flex-direction: column; align-items: center; cursor: pointer; pointer-events: auto; z-index: 100 !important;';
 
-      if (!marker) {
-        const carEl = document.createElement('div');
-        carEl.className = `maptiler-bus-marker-${b.vehicle.id}`;
-        carEl.style.width = '110px';
-        carEl.style.display = 'flex';
-        carEl.style.flexDirection = 'column';
-        carEl.style.alignItems = 'center';
-        carEl.style.cursor = 'pointer';
+      const marker = new maptilersdk.Marker({ element: carEl, anchor: 'center' })
+        .setLngLat([currentPos[1], currentPos[0]])
+        .addTo(map);
 
-        marker = new maptilersdk.Marker({ element: carEl, anchor: 'center' })
-          .setLngLat([currentPos[1], currentPos[0]])
-          .addTo(map);
+      busMarkerRef.current = marker;
+    }
 
-        busMarkersRef.current[b.vehicle.id] = marker;
-      }
+    const marker = busMarkerRef.current;
+    marker.setLngLat([currentPos[1], currentPos[0]]);
 
-      // Smoothly update position on MapTiler map
-      marker.setLngLat([currentPos[1], currentPos[0]]);
+    if (followBus) {
+      map.easeTo({
+        center: [currentPos[1], currentPos[0]],
+        duration: 1000
+      });
+    }
 
-      // Follow bus camera if enabled for mobile driver navigator mode
-      if (followBus) {
-        map.easeTo({
-          center: [currentPos[1], currentPos[0]],
-          duration: 1000
-        });
-      }
-
-      // Update inner graphic HTML with heading rotation
-      const carEl = marker.getElement();
-      carEl.innerHTML = `
-        <!-- Yellow ETA Bubble attached directly on top of the car -->
+    const carEl = marker.getElement();
+    carEl.innerHTML = `
+      <!-- Yellow ETA Bubble attached directly on top of the car -->
+      <div style="
+        background: #fbbf24;
+        color: #0f172a;
+        font-weight: 900;
+        padding: 3px 10px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.6);
+        text-align: center;
+        position: relative;
+        border: 2px solid #ffffff;
+        margin-bottom: 2px;
+        z-index: 102;
+      ">
+        <div style="font-size: 13px; line-height: 1.1; font-weight: 900;">3</div>
+        <div style="font-size: 8.5px; font-weight: 800; margin-top: -2px;">daq</div>
         <div style="
-          background: #fbbf24;
-          color: #0f172a;
-          font-weight: 900;
-          padding: 2.5px 9px;
-          border-radius: 12px;
-          box-shadow: 0 4px 10px rgba(251, 191, 36, 0.45);
-          text-align: center;
-          position: relative;
-          border: 2px solid #ffffff;
-          margin-bottom: 2px;
-        ">
-          <div style="font-size: 12px; line-height: 1.1; font-weight: 900;">3</div>
-          <div style="font-size: 8.5px; font-weight: 800; margin-top: -2px;">daq</div>
-          <div style="
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid #fbbf24;
-          "></div>
-        </div>
+          position: absolute;
+          bottom: -5px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-top: 5px solid #fbbf24;
+        "></div>
+      </div>
 
-        <!-- Top-Down 2D Yellow Vehicle SVG rotated along road tangent -->
-        <div style="
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform: rotate(${heading}deg);
-          filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
-          transition: transform 0.4s ease;
-        ">
-          <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="25" y="10" width="50" height="80" rx="18" fill="#facc15" stroke="#ca8a04" stroke-width="4"/>
-            <rect x="32" y="28" width="36" height="44" rx="8" fill="#eab308"/>
-            <path d="M33 28 C33 20 67 20 67 28 L64 36 L36 36 Z" fill="#0f172a"/>
-            <path d="M36 64 L64 64 L67 72 C67 80 33 80 33 72 Z" fill="#0f172a"/>
-            <rect x="29" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
-            <rect x="66" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
-            <rect x="28" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
-            <rect x="62" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
-            <rect x="28" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
-            <rect x="62" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
-          </svg>
-        </div>
+      <!-- Top-Down 2D Yellow Vehicle SVG with clear drop shadow -->
+      <div style="
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: rotate(${heading}deg);
+        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+        transition: transform 0.3s ease;
+        z-index: 101;
+      ">
+        <svg width="44" height="44" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="25" y="10" width="50" height="80" rx="18" fill="#facc15" stroke="#ca8a04" stroke-width="4"/>
+          <rect x="32" y="28" width="36" height="44" rx="8" fill="#eab308"/>
+          <path d="M33 28 C33 20 67 20 67 28 L64 36 L36 36 Z" fill="#0f172a"/>
+          <path d="M36 64 L64 64 L67 72 C67 80 33 80 33 72 Z" fill="#0f172a"/>
+          <rect x="29" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
+          <rect x="66" y="38" width="5" height="24" rx="2" fill="#0f172a"/>
+          <rect x="28" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
+          <rect x="62" y="12" width="10" height="5" rx="2" fill="#ffffff"/>
+          <rect x="28" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
+          <rect x="62" y="83" width="10" height="5" rx="2" fill="#ef4444"/>
+        </svg>
+      </div>
 
-        <!-- Plate & Speed badge -->
-        <div style="
-          background: ${isSos ? '#dc2626' : 'rgba(15, 23, 42, 0.95)'};
-          backdrop-filter: blur(8px);
-          color: #ffffff;
-          font-size: 8.5px;
-          font-weight: 800;
-          padding: 1.5px 5px;
-          border-radius: 7px;
-          margin-top: 1px;
-          white-space: nowrap;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          border: 1px solid #facc15;
-        ">
-          ${isSos ? '🚨 SOS' : `${b.vehicle.plate_number} (${b.speed} km/h)`}
-        </div>
-      `;
-    });
-  }, [buses, activeCarPathIndex, roadCoordinates, emergencyAlerts, followBus]);
+      <!-- Plate & Speed badge -->
+      <div style="
+        background: ${isSos ? '#dc2626' : 'rgba(15, 23, 42, 0.95)'};
+        backdrop-filter: blur(8px);
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 800;
+        padding: 2px 7px;
+        border-radius: 8px;
+        margin-top: 1px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        border: 1.5px solid #facc15;
+        z-index: 102;
+      ">
+        ${isSos ? '🚨 SOS' : `${effectiveBus.vehicle.plate_number} (${effectiveBus.speed} km/h)`}
+      </div>
+    `;
+  }, [effectiveBus, activeCarPathIndex, roadCoordinates, emergencyAlerts, followBus]);
 
   return (
     <div 
