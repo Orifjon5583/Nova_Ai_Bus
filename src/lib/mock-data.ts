@@ -4,10 +4,10 @@ import {
 } from '../types/database';
 
 export const SCHOOL_LOCATION = {
-  name: "Nova Xususiy Maktabi",
-  address: "Toshkent shahar, Mirzo Ulug'bek tumani, Mustaqillik shoh ko'chasi 45-uy",
-  lat: 41.311082,
-  lng: 69.240562
+  name: "Nova International AI School",
+  address: "Urganch sh., Sanoatchilar ko'chasi, 9-0 uy (Ashxobod mahallasi)",
+  lat: 41.524061,
+  lng: 60.653853
 };
 
 export const MOCK_USERS: User[] = [
@@ -159,9 +159,9 @@ export const MOCK_STUDENTS: Student[] = [
     address: {
       id: 1,
       student_id: 1,
-      address_text: 'Toshkent sh., Yunusobod tumani, 11-mavze 24-uy',
-      latitude: 41.3650,
-      longitude: 69.2850,
+      address_text: 'Urganch sh., Al-Xorazmiy shoh ko\'chasi 14-uy',
+      latitude: 41.5620,
+      longitude: 60.6120,
       pickup_note: 'Darvoza oldida kutadi',
       is_active: true,
       is_confirmed: true,
@@ -184,9 +184,9 @@ export const MOCK_STUDENTS: Student[] = [
     address: {
       id: 2,
       student_id: 2,
-      address_text: 'Toshkent sh., Yunusobod tumani, A.Temur ko\'chasi 88-uy',
-      latitude: 41.3480,
-      longitude: 69.2845,
+      address_text: 'Urganch sh., J.Manguberdi maydoni 5-uy',
+      latitude: 41.5520,
+      longitude: 60.6280,
       pickup_note: 'Podyezd oldida',
       is_active: true,
       is_confirmed: true,
@@ -209,9 +209,9 @@ export const MOCK_STUDENTS: Student[] = [
     address: {
       id: 3,
       student_id: 3,
-      address_text: 'Toshkent sh., Yunusobod tumani, Bodomzor yo\'li 15-uy',
-      latitude: 41.3380,
-      longitude: 69.2835,
+      address_text: 'Urganch sh., Ashxobod mahallasi, Xonqa yo\'li 22-uy',
+      latitude: 41.5380,
+      longitude: 60.6410,
       pickup_note: 'Bosh bekat yonida',
       is_active: true,
       is_confirmed: true,
@@ -234,9 +234,9 @@ export const MOCK_STUDENTS: Student[] = [
     address: {
       id: 4,
       student_id: 4,
-      address_text: 'Toshkent sh., Chilonzor tumani, 9-mavze 12-uy',
-      latitude: 41.2750,
-      longitude: 69.2050,
+      address_text: 'Urganch sh., Pahlavon Mahmud ko\'chasi 33-uy',
+      latitude: 41.5450,
+      longitude: 60.6180,
       pickup_note: 'Shlagbaum yonida',
       is_active: true,
       created_at: '2026-02-04T10:00:00Z'
@@ -258,9 +258,9 @@ export const MOCK_STUDENTS: Student[] = [
     address: {
       id: 5,
       student_id: 5,
-      address_text: 'Toshkent sh., Mirzo Ulug\'bek tumani, Buyuk Ipak Yuli 120-uy',
-      latitude: 41.3350,
-      longitude: 69.3450,
+      address_text: 'Urganch sh., Gurlan ko\'chasi 78-uy',
+      latitude: 41.5580,
+      longitude: 60.6350,
       pickup_note: 'Bekat yonida',
       is_active: true,
       created_at: '2026-02-05T10:00:00Z'
@@ -269,21 +269,16 @@ export const MOCK_STUDENTS: Student[] = [
 ];
 
 const RAW_ROUTE_1_POINTS: Array<[number, number]> = [
-  [41.3650, 69.2850], // 1-bekat: Yunusobod 11-mavze (Ali)
-  [41.3600, 69.2865], // Ahmad Donish ko'chasi
-  [41.3530, 69.2855], // Ahmad Donish / Yunusota chorrahasi
-  [41.3480, 69.2845], // 2-bekat: Amir Temur shoh ko'chasi (Madina)
-  [41.3430, 69.2840], // Shahriston metro chorrahasi
-  [41.3380, 69.2835], // 3-bekat: Bodomzor / International Business Center ro'parasidagi Amir Temur shoh ko'chasi (Jasur)
-  [41.3340, 69.2830], // Amir Temur shoh ko'chasi (Osiyo ko'chasi chorrahasi)
-  [41.3295, 69.2815], // Minor metro bekati (Amir Temur shoh ko'chasi)
-  [41.3255, 69.2790], // Amir Temur / Abdulla Qodiriy ko'prigi
-  [41.3245, 69.2730], // Abdulla Qodiriy ko'chasi (Anhor daryosi bo'ylab)
-  [41.3230, 69.2650], // Abdulla Qodiriy ko'chasi (G'afur G'ulom bog'i)
-  [41.3210, 69.2560], // Abdulla Qodiriy / Sebzor ko'prigi
-  [41.3180, 69.2490], // Zarqaynar ko'chasi (Chorsu)
-  [41.3145, 69.2440], // Samarqand Darvoza / Qoratosh ko'chasi
-  [41.311082, 69.240562] // Nova Maktab darvozasi (SCHOOL_LOCATION)
+  [41.5620, 60.6120], // 1-bekat: Al-Xorazmiy shoh ko'chasi (Ali)
+  [41.5580, 60.6180], // Al-Xorazmiy shoh ko'chasi
+  [41.5550, 60.6220], // Temir yo'l vokzali chorrahasi
+  [41.5520, 60.6280], // 2-bekat: Jaloliddin Manguberdi maydoni (Madina)
+  [41.5480, 60.6320], // Shovot kanali ko'prigi bo'ylab
+  [41.5420, 60.6360], // Pahlavon Mahmud ko'chasi chorrahasi
+  [41.5380, 60.6410], // 3-bekat: Ashxobod mahallasi / Xonqa yo'li (Jasur)
+  [41.5320, 60.6470], // Sanoatchilar ko'chasiga burilish
+  [41.5280, 60.6510], // Sanoatchilar ko'chasi bo'ylab
+  [41.524061, 60.653853] // Nova International AI School (9-0, Sanoatchilar ko'chasi)
 ];
 
 function interpolateRoadPath(points: Array<[number, number]>, stepsBetween = 4): Array<[number, number]> {

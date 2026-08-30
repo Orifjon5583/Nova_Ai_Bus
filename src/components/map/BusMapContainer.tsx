@@ -301,7 +301,7 @@ export default function BusMapContainer({
   buses = [],
   students = [],
   routeCoords = [],
-  center = [41.3400, 69.2650],
+  center = [41.5420, 60.6350],
   zoom = 13,
   emergencyAlerts = [],
   routeAlerts = [],
@@ -322,7 +322,7 @@ export default function BusMapContainer({
     const waypoints: Array<[number, number]> = routeCoords.length > 0 
       ? routeCoords 
       : [
-          [41.3650, 69.2850], // Ali (Yunusobod 11)
+          [41.5620, 60.6120], // Ali (Al-Xorazmiy shoh ko'chasi, Urganch)
           ...students.filter(s => s.address && s.status === 'active').map(s => [s.address!.latitude, s.address!.longitude] as [number, number]),
           [SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng]
         ];
