@@ -268,6 +268,45 @@ export const MOCK_STUDENTS: Student[] = [
   }
 ];
 
+// Real Tashkent Street Road Coordinates (Following actual avenues and street networks)
+export const ROUTE_STREET_PATHS: Record<number, Array<[number, number]>> = {
+  1: [
+    [41.3652, 69.2854], // 1-bekat: Yunusobod 11-mavze
+    [41.3621, 69.2858], // Ahmad Donish ko'chasi
+    [41.3575, 69.2848], // Ahmad Donish / Yunusota chorrahasi
+    [41.3532, 69.2835], // Amir Temur shoh ko'chasiga kirish
+    [41.3480, 69.2810], // 2-bekat: Amir Temur ko'chasi (Madina)
+    [41.3435, 69.2825], // Shahriston metro chorrahasi
+    [41.3380, 69.2810], // 3-bekat: Bodomzor / Sebzor (Jasur)
+    [41.3330, 69.2802], // Amir Temur shoh ko'chasi
+    [41.3282, 69.2785], // Minor metro bekati chorrahasi
+    [41.3235, 69.2745], // Abdulla Qodiriy ko'chasiga burilish
+    [41.3195, 69.2660], // Abdulla Qodiriy bo'ylab G'afur G'ulom bog'i
+    [41.3160, 69.2560], // Sebzor / Navoiy shoh ko'chasiga burilish
+    [41.3138, 69.2485], // Alisher Navoiy shoh ko'chasi bo'ylab
+    [41.3120, 69.2435], // Xalqlar Do'stligi / Navoiy ko'chasi
+    [41.311082, 69.240562] // Nova Maktab (Maktab darvozasi)
+  ],
+  2: [
+    [41.2750, 69.2050], // Chilonzor 20-mavze
+    [41.2780, 69.2090], // Qatortol ko'chasi
+    [41.2840, 69.2150], // Bunyodkor shoh ko'chasi
+    [41.2920, 69.2220], // Mirzo Ulug'bek metro chorrahasi
+    [41.3000, 69.2310], // Xalqlar Do'stligi saroyi
+    [41.3060, 69.2370], // O'zbekiston shoh ko'chasi
+    [41.311082, 69.240562] // Nova Maktab
+  ],
+  3: [
+    [41.3350, 69.3450], // Feruza mavzesi
+    [41.3320, 69.3350], // Buyuk Ipak Yo'li
+    [41.3270, 69.3180], // Mirzo Ulug'bek shoh ko'chasi
+    [41.3220, 69.2980], // Mustaqillik shoh ko'chasi
+    [41.3180, 69.2750], // Amir Temur xiyoboni
+    [41.3140, 69.2550], // Navoiy shoh ko'chasi
+    [41.311082, 69.240562] // Nova Maktab
+  ]
+};
+
 export const MOCK_ROUTES: Route[] = [
   {
     id: 1,

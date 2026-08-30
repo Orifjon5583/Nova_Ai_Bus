@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { SCHOOL_LOCATION } from '../../lib/mock-data';
+import { SCHOOL_LOCATION, ROUTE_STREET_PATHS } from '../../lib/mock-data';
 import { Student, Vehicle, RouteAlert, EmergencyAlert } from '../../types/database';
 
 // SVG Icon Strings for Leaflet divIcon HTML rendering
@@ -98,7 +98,6 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
 };
 
 const schoolIcon = createCustomIcon('#2563eb', 'Nova Maktab', schoolSvg);
-const busIconActive = createCustomIcon('#16a34a', 'Avtobus (01 777 NVA)', busSvg);
 const busIconSos = createCustomIcon('#dc2626', 'SOS - FAVQULODDA!', sosSvg);
 
 interface BusMapProps {
@@ -126,8 +125,6 @@ function MapRecenter({ center }: { center: [number, number] }) {
   return null;
 }
 
-import { useMapEvents } from 'react-leaflet';
-
 function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(e) {
@@ -151,16 +148,18 @@ export default function BusMapContainer({
   onMapClick
 }: BusMapProps) {
 
+  // Polyline follows actual Tashkent street road network (Ahmad Donish -> Amir Temur -> Abdulla Qodiriy -> Navoiy -> Nova Maktab)
   const polylinePoints: [number, number][] = routeCoords.length > 0 
     ? routeCoords 
-    : [
-        [41.3650, 69.2850],
-        ...students.filter(s => s.address).map(s => [s.address!.latitude, s.address!.longitude] as [number, number]),
-        [SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng]
+    : ROUTE_STREET_PATHS[1] || [
+        [41.3652, 69.2854],
+        [41.3480, 69.2810],
+        [41.3380, 69.2810],
+        [41.311082, 69.240562]
       ];
 
   return (
-    <div style={{ height, width: '100%', borderRadius: '16px', overflow: 'hidden', zIndex: 1 }} className="shadow-lg border border-slate-200 dark:border-slate-800">
+    <div style={{ height, width: '100%', borderRadius: '24px', overflow: 'hidden', zIndex: 1 }} className="shadow-2xl border border-slate-200 dark:border-slate-800">
       <MapContainer 
         center={center} 
         zoom={zoom} 
@@ -252,12 +251,20 @@ export default function BusMapContainer({
           );
         })}
 
-        {/* Route Line */}
+        {/* Real Street Road Route Polyline (Following Tashkent Avenues) */}
         {polylinePoints.length > 1 && (
-          <Polyline 
-            positions={polylinePoints} 
-            pathOptions={{ color: '#3b82f6', weight: 4, opacity: 0.8, dashArray: '8, 8' }} 
-          />
+          <>
+            {/* Soft glowing underlay */}
+            <Polyline 
+              positions={polylinePoints} 
+              pathOptions={{ color: '#3b82f6', weight: 8, opacity: 0.35, lineCap: 'round', lineJoin: 'round' }} 
+            />
+            {/* Crisp main road line */}
+            <Polyline 
+              positions={polylinePoints} 
+              pathOptions={{ color: '#2563eb', weight: 4.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} 
+            />
+          </>
         )}
       </MapContainer>
     </div>

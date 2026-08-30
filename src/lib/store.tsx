@@ -9,7 +9,7 @@ import {
   MOCK_USERS, MOCK_PARENTS, MOCK_DRIVERS, MOCK_VEHICLES, MOCK_STUDENTS, 
   MOCK_ROUTES, MOCK_TRIPS, MOCK_TRIP_STUDENTS, MOCK_NOTIFICATIONS, 
   MOCK_DAILY_CONFIRMATIONS, MOCK_EMERGENCY_ALERTS, MOCK_ROUTE_ALERTS, 
-  MOCK_AUDIT_LOGS, SCHOOL_LOCATION
+  MOCK_AUDIT_LOGS, SCHOOL_LOCATION, ROUTE_STREET_PATHS
 } from './mock-data';
 
 interface LiveBusState {
@@ -150,7 +150,9 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
-  // Simulated GPS movement loop
+  const [routeStepIndices, setRouteStepIndices] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0 });
+
+  // Simulated GPS movement loop strictly along Tashkent streets
   useEffect(() => {
     const interval = setInterval(() => {
       setBusLocations(prev => {
@@ -159,27 +161,28 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const vId = Number(vIdStr);
           const bus = next[vId];
           if (bus && bus.isSimulating) {
-            const targetLat = SCHOOL_LOCATION.lat;
-            const targetLng = SCHOOL_LOCATION.lng;
+            const streetPath = ROUTE_STREET_PATHS[bus.routeId || 1] || ROUTE_STREET_PATHS[1];
             
-            const deltaLat = (targetLat - bus.lat) * 0.04;
-            const deltaLng = (targetLng - bus.lng) * 0.04;
-            
-            const newLat = bus.lat + deltaLat;
-            const newLng = bus.lng + deltaLng;
-            const speed = Math.floor(Math.random() * 20) + 35;
-            
-            next[vId] = {
-              ...bus,
-              lat: newLat,
-              lng: newLng,
-              speed
-            };
+            setRouteStepIndices(indices => {
+              const curIdx = indices[vId] ?? 0;
+              const nextIdx = (curIdx + 1) % streetPath.length;
+              const [nextLat, nextLng] = streetPath[nextIdx];
+              const speed = Math.floor(Math.random() * 12) + 36; // 36 - 48 km/h city street speed
+
+              next[vId] = {
+                ...bus,
+                lat: nextLat,
+                lng: nextLng,
+                speed
+              };
+
+              return { ...indices, [vId]: nextIdx };
+            });
           }
         });
         return next;
       });
-    }, 3000);
+    }, 2800);
 
     return () => clearInterval(interval);
   }, []);
