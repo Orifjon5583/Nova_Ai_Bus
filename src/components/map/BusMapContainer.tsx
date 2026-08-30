@@ -39,6 +39,17 @@ const createCustomIcon = (color: string, label: string, svgHtml: string) => {
   });
 };
 
+// Calculate heading angle in degrees along road tangent
+function calculateHeading(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const lat1Rad = lat1 * Math.PI / 180;
+  const lat2Rad = lat2 * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2Rad);
+  const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+  const brng = Math.atan2(y, x) * 180 / Math.PI;
+  return (brng + 360) % 360;
+}
+
 // 1. Pixel-Perfect Yandex Vehicle with Integrated "3 daq" ETA Bubble on top (100% centered on road line)
 const createYandexBusMarkerIcon = (plateNumber: string, speed: number, etaMinutes = 3, heading = 0) => {
   return L.divIcon({
@@ -303,6 +314,9 @@ export default function BusMapContainer({
     routeCoords.length > 0 ? routeCoords : ROUTE_STREET_PATHS[1] || []
   );
 
+  // Synchronized movement index along the exact OSRM road coordinates
+  const [activeCarPathIndex, setActiveCarPathIndex] = useState(0);
+
   useEffect(() => {
     let isMounted = true;
     const waypoints: Array<[number, number]> = routeCoords.length > 0 
@@ -321,6 +335,15 @@ export default function BusMapContainer({
 
     return () => { isMounted = false; };
   }, [students, routeCoords]);
+
+  // Advance car index smoothly along the exact roadCoordinates polyline array
+  useEffect(() => {
+    if (roadCoordinates.length === 0) return;
+    const interval = setInterval(() => {
+      setActiveCarPathIndex(prev => (prev + 1) % roadCoordinates.length);
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [roadCoordinates]);
 
   // Break real road into traffic condition segments (Green = Free, Yellow = Moderate, Red = Traffic Jam)
   const segLength = Math.max(2, Math.floor(roadCoordinates.length / 4));
@@ -356,15 +379,23 @@ export default function BusMapContainer({
           </Popup>
         </Marker>
 
-        {/* 2. Top-Down Yellow Vehicles advancing in real-time strictly on polyline */}
+        {/* 2. Top-Down Yellow Vehicles advancing in real-time strictly on the exact OSRM polyline */}
         {buses.map(b => {
           const isSos = emergencyAlerts.some(e => e.vehicle_id === b.vehicle.id && e.status === 'active');
+          
+          // Position strictly derived from the exact same roadCoordinates array that is drawn as the line!
+          const curIndex = activeCarPathIndex % roadCoordinates.length;
+          const nextIndex = (curIndex + 1) % roadCoordinates.length;
+          const currentPos = roadCoordinates[curIndex] || [b.lat, b.lng];
+          const nextPos = roadCoordinates[nextIndex] || currentPos;
+          const heading = calculateHeading(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
+
           const currentIcon = isSos 
             ? busIconSos 
-            : createYandexBusMarkerIcon(b.vehicle.plate_number, b.speed, 3, b.heading || 160);
+            : createYandexBusMarkerIcon(b.vehicle.plate_number, b.speed, 3, heading);
 
           return (
-            <Marker key={b.vehicle.id} position={[b.lat, b.lng]} icon={currentIcon}>
+            <Marker key={b.vehicle.id} position={currentPos} icon={currentIcon}>
               <Popup>
                 <div className="p-2 min-w-[200px]">
                   <div className="flex items-center gap-2 mb-2">
@@ -378,7 +409,7 @@ export default function BusMapContainer({
                   </div>
                   <div className="space-y-1 text-xs text-slate-600 border-t pt-2">
                     <p><strong>Hozirgi tezlik:</strong> {b.speed} km/h</p>
-                    <p><strong>Koordinatalar:</strong> {b.lat.toFixed(4)}, {b.lng.toFixed(4)}</p>
+                    <p><strong>Koordinatalar:</strong> {currentPos[0].toFixed(4)}, {currentPos[1].toFixed(4)}</p>
                     <p><strong>Sig'imi:</strong> {b.vehicle.capacity} o'quvchi</p>
                     {isSos && (
                       <p className="text-red-600 font-bold bg-red-50 p-1 rounded mt-1">FAVQULODDA SOS SIZGA KELDI</p>
