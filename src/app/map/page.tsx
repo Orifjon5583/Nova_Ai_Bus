@@ -22,7 +22,7 @@ const BusMapContainer = dynamic(() => import('../../components/map/BusMapContain
 });
 
 export default function FullscreenMapPage() {
-  const { vehicles, students, schoolLocation, busLocations, emergencyAlerts, routeAlerts } = useSystem();
+  const { vehicles, students, schoolLocation, dailyConfirmations, busLocations, emergencyAlerts, routeAlerts } = useSystem();
   const [showPassengerList, setShowPassengerList] = useState(false);
   const [followBus, setFollowBus] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>([41.5420, 60.6350]);
@@ -207,6 +207,7 @@ export default function FullscreenMapPage() {
           buses={busData}
           students={students}
           schoolLocation={schoolLocation}
+          dailyConfirmations={dailyConfirmations}
           center={mapCenter}
           zoom={mapZoom}
           emergencyAlerts={emergencyAlerts}

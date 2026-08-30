@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as maptilersdk from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 import { SCHOOL_LOCATION, ROUTE_STREET_PATHS } from '../../lib/mock-data';
-import { Student, Vehicle, RouteAlert, EmergencyAlert } from '../../types/database';
+import { Student, Vehicle, RouteAlert, EmergencyAlert, DailyTransportConfirmation } from '../../types/database';
 import { fetchRealRoadRoute } from '../../lib/routing';
 
 const MAPTILER_KEY = 'GWgqgaHGL6LiYlf1JeDi';
@@ -36,6 +36,7 @@ interface BusMapProps {
     lat: number;
     lng: number;
   };
+  dailyConfirmations?: DailyTransportConfirmation[];
   routeCoords?: Array<[number, number]>;
   center?: [number, number];
   zoom?: number;
@@ -50,6 +51,7 @@ export default function BusMapContainer({
   buses = [],
   students = [],
   schoolLocation = SCHOOL_LOCATION,
+  dailyConfirmations = [],
   routeCoords = [],
   center = [41.5420, 60.6350],
   zoom = 13,
@@ -84,11 +86,19 @@ export default function BusMapContainer({
     heading: 140
   };
 
-  // 1. Fetch MapTiler Directions Turn-by-Turn Road Geometry whenever students or school location change
+  // 1. Fetch MapTiler Directions Road Geometry (SKIPS students whose parents answered "Yo'q")
   useEffect(() => {
     let isMounted = true;
-    const activeStudentPoints: Array<[number, number]> = students
-      .filter(s => s.address && s.status === 'active')
+
+    // Filter only students who are confirmed to ride today (skips "Yo'q")
+    const activeConfirmedStudents = students.filter(s => {
+      if (!s.address || s.status !== 'active') return false;
+      const conf = dailyConfirmations.find(c => c.student_id === s.id);
+      if (conf && !conf.will_use_transport) return false; // SKIPPED!
+      return true;
+    });
+
+    const activeStudentPoints: Array<[number, number]> = activeConfirmedStudents
       .map(s => [s.address!.latitude, s.address!.longitude] as [number, number]);
 
     const waypoints: Array<[number, number]> = routeCoords.length > 0 
@@ -111,7 +121,7 @@ export default function BusMapContainer({
     });
 
     return () => { isMounted = false; };
-  }, [students, routeCoords, effectiveSchool.lat, effectiveSchool.lng]);
+  }, [students, dailyConfirmations, routeCoords, effectiveSchool.lat, effectiveSchool.lng]);
 
   // 2. Initialize 2D Flat MapTiler Vector Map
   useEffect(() => {
@@ -252,7 +262,7 @@ export default function BusMapContainer({
     }
   }, [roadCoordinates]);
 
-  // 5. Render School Marker ("07:55 da yetib keladi") dynamically using effectiveSchool
+  // 5. Render School Marker ("07:55 da yetib keladi")
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -316,7 +326,7 @@ export default function BusMapContainer({
     schoolMarkerRef.current = marker;
   }, [effectiveSchool.lat, effectiveSchool.lng, effectiveSchool.name, effectiveSchool.address]);
 
-  // 6. Render Student Home Photo Pins (Live synced to student addresses)
+  // 6. Render Student Home Photo Pins (Highlights skipped students who answered "Yo'q")
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -327,20 +337,23 @@ export default function BusMapContainer({
     students.forEach((student, idx) => {
       if (!student.address) return;
 
+      const conf = dailyConfirmations.find(c => c.student_id === student.id);
+      const isSkipped = conf ? !conf.will_use_transport : false;
+
       const studentEl = document.createElement('div');
-      studentEl.style.cssText = 'display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 35;';
+      studentEl.style.cssText = `display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: ${isSkipped ? 20 : 35}; opacity: ${isSkipped ? 0.45 : 1};`;
       studentEl.innerHTML = `
         <div style="
           width: 36px;
           height: 36px;
           border-radius: 50% 50% 50% 0;
-          background: #ef4444;
+          background: ${isSkipped ? '#64748b' : '#ef4444'};
           transform: rotate(-45deg);
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
-          border: 2px solid #dc2626;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          border: 2px solid ${isSkipped ? '#475569' : '#dc2626'};
         ">
           <img src="${student.photo_url}" style="
             width: 25px;
@@ -350,10 +363,11 @@ export default function BusMapContainer({
             object-fit: cover;
             border: 1.5px solid white;
             background: #ffffff;
+            ${isSkipped ? 'filter: grayscale(100%);' : ''}
           " alt="${student.first_name}" />
         </div>
         <div style="
-          background: #0f172a;
+          background: ${isSkipped ? '#334155' : '#0f172a'};
           color: #ffffff;
           font-size: 9px;
           font-weight: 800;
@@ -364,7 +378,7 @@ export default function BusMapContainer({
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           border: 1px solid white;
         ">
-          ${idx + 1}-bekat: ${student.first_name}
+          ${isSkipped ? `🚫 ${student.first_name} (Bormaydi)` : `${idx + 1}-bekat: ${student.first_name}`}
         </div>
       `;
 
@@ -376,18 +390,19 @@ export default function BusMapContainer({
               <img src="${student.photo_url}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
               <div>
                 <h4 style="font-weight: bold; margin: 0; font-size: 12px;">${student.first_name} ${student.last_name}</h4>
-                <p style="font-size: 10px; color: #4f46e5; margin: 0;">${student.class_name}</p>
+                <p style="font-size: 10px; color: ${isSkipped ? '#ef4444' : '#4f46e5'}; margin: 0; font-weight: bold;">
+                  ${isSkipped ? "🚫 Bugun transportdan foydalanmaydi (Yo'q)" : student.class_name}
+                </p>
               </div>
             </div>
             <p style="font-size: 10px; color: #64748b; margin: 3px 0 0 0;"><strong>Manzil:</strong> ${student.address.address_text}</p>
-            <p style="font-size: 9px; color: #94a3b8; margin: 2px 0 0 0; font-family: monospace;">${student.address.latitude}, ${student.address.longitude}</p>
           </div>
         `))
         .addTo(map);
 
       studentMarkersRef.current.push(marker);
     });
-  }, [students]);
+  }, [students, dailyConfirmations]);
 
   // 7. Advance car step-by-step along the exact MapTiler road coordinates
   useEffect(() => {

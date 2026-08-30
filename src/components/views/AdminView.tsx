@@ -14,7 +14,8 @@ export default function AdminView() {
   const { 
     students, parents, drivers, vehicles, routes, busLocations, 
     emergencyAlerts, routeAlerts, auditLogs, resolveSOS, addStudent, deleteStudent,
-    resetStudentAddressRequest, updateStudentLocation, schoolLocation, updateSchoolLocation
+    resetStudentAddressRequest, updateStudentLocation, schoolLocation, updateSchoolLocation,
+    dailyConfirmations
   } = useSystem();
 
   const [activeTab, setActiveTab] = useState<'map' | 'locations' | 'students' | 'fleet' | 'routes' | 'logs'>('map');
@@ -257,6 +258,7 @@ export default function AdminView() {
                 }))}
                 students={students}
                 schoolLocation={schoolLocation}
+                dailyConfirmations={dailyConfirmations}
                 emergencyAlerts={emergencyAlerts}
                 routeAlerts={routeAlerts}
                 onMapClick={handleMapClick}

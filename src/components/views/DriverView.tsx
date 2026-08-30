@@ -69,7 +69,7 @@ function calculateOptimalPickupSequence(
 
 export default function DriverView() {
   const { 
-    currentUser, drivers, students, tripStudents, busLocations, vehicles, confirmStudentPickup, 
+    currentUser, drivers, students, tripStudents, dailyConfirmations, busLocations, vehicles, confirmStudentPickup, 
     confirmSchoolArrival, triggerSOS, toggleBusSimulation, updateBusLocationManually, schoolLocation
   } = useSystem();
 
@@ -93,12 +93,17 @@ export default function DriverView() {
 
   const currentStartLoc = DRIVER_START_LOCATIONS.find(l => l.id === selectedStartLocationId) || DRIVER_START_LOCATIONS[0];
 
-  // 1. Initialize & Start Trip: Calculate automatic optimal sequence
+  // 1. Initialize & Start Trip: Calculate automatic optimal sequence (skips students whose parents answered "Yo'q")
   const handleStartTrip = () => {
+    const activeConfirmedStudents = students.filter(s => {
+      const conf = dailyConfirmations.find(c => c.student_id === s.id);
+      return conf ? conf.will_use_transport : true;
+    });
+
     const sortedStudents = calculateOptimalPickupSequence(
       currentStartLoc.lat,
       currentStartLoc.lng,
-      students,
+      activeConfirmedStudents,
       schoolLocation?.lat || SCHOOL_LOCATION.lat,
       schoolLocation?.lng || SCHOOL_LOCATION.lng
     );
@@ -393,6 +398,8 @@ export default function DriverView() {
             heading: busLoc?.heading || 140
           }]}
           students={pickupSequence.length > 0 ? pickupSequence : students}
+          schoolLocation={schoolLocation}
+          dailyConfirmations={dailyConfirmations}
           height="380px"
           followBus={true}
         />
