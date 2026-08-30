@@ -38,51 +38,58 @@ const createCustomIcon = (color: string, label: string, svgHtml: string) => {
   });
 };
 
-// 1. Unified Yandex Vehicle with Integrated "3 daq" ETA Bubble on top (100% glued to car position)
+// 1. Pixel-Perfect Yandex Vehicle with Integrated "3 daq" ETA Bubble on top (100% centered on road line)
 const createYandexBusMarkerIcon = (plateNumber: string, speed: number, etaMinutes = 3, heading = 0) => {
   return L.divIcon({
     className: 'custom-leaflet-marker',
     html: `
       <div style="
+        width: 120px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        transform: translate(-50%, -70%);
+        margin: 0;
+        padding: 0;
       ">
-        <!-- Yellow ETA Bubble attached directly on top of the car -->
+        <!-- 1. Yellow ETA Bubble on top of the car -->
         <div style="
           background: #fbbf24;
           color: #0f172a;
           font-weight: 900;
-          padding: 4px 10px;
-          border-radius: 14px;
-          box-shadow: 0 4px 14px rgba(251, 191, 36, 0.45);
+          padding: 3px 10px;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(251, 191, 36, 0.45);
           text-align: center;
           position: relative;
           border: 2px solid #ffffff;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         ">
-          <div style="font-size: 14px; line-height: 1.1; font-weight: 900;">${etaMinutes}</div>
+          <div style="font-size: 13px; line-height: 1.1; font-weight: 900;">${etaMinutes}</div>
           <div style="font-size: 9px; font-weight: 800; margin-top: -2px;">daq</div>
           
           <!-- Bottom Pointer Arrow -->
           <div style="
             position: absolute;
-            bottom: -6px;
+            bottom: -5px;
             left: 50%;
             transform: translateX(-50%);
             width: 0;
             height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 6px solid #fbbf24;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #fbbf24;
           "></div>
         </div>
 
-        <!-- Top-Down Yellow Vehicle SVG with Drop Shadow -->
+        <!-- 2. Top-Down Yellow Vehicle SVG centered at X=60px, Y=53px -->
         <div style="
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           transform: rotate(${heading}deg);
-          filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45));
+          filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));
           transition: transform 0.3s ease;
         ">
           <svg width="38" height="38" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -99,9 +106,9 @@ const createYandexBusMarkerIcon = (plateNumber: string, speed: number, etaMinute
           </svg>
         </div>
 
-        <!-- Plate & Speed pill badge -->
+        <!-- 3. Plate & Speed pill badge -->
         <div style="
-          background: rgba(15, 23, 42, 0.92);
+          background: rgba(15, 23, 42, 0.95);
           backdrop-filter: blur(8px);
           color: #ffffff;
           font-size: 9px;
@@ -117,8 +124,8 @@ const createYandexBusMarkerIcon = (plateNumber: string, speed: number, etaMinute
         </div>
       </div>
     `,
-    iconSize: [100, 95],
-    iconAnchor: [50, 50]
+    iconSize: [120, 88],
+    iconAnchor: [60, 53] // Center of the 38x38 car SVG is at X=60px, Y=53px!
   });
 };
 
@@ -128,19 +135,21 @@ const createYandexDestinationBubbleIcon = (timeStr: string) => {
     className: 'custom-leaflet-marker',
     html: `
       <div style="
+        width: 160px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        transform: translate(-50%, -100%);
+        margin: 0;
+        padding: 0;
       ">
         <div style="
           background: #ffffff;
           color: #0f172a;
           font-weight: 800;
           font-size: 12px;
-          padding: 6px 14px;
-          border-radius: 18px;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.22);
+          padding: 5px 12px;
+          border-radius: 16px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.22);
           text-align: center;
           position: relative;
           border: 1.5px solid #cbd5e1;
@@ -151,14 +160,14 @@ const createYandexDestinationBubbleIcon = (timeStr: string) => {
           <!-- Bottom Pointer Arrow -->
           <div style="
             position: absolute;
-            bottom: -6px;
+            bottom: -5px;
             left: 50%;
             transform: translateX(-50%);
             width: 0;
             height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 6px solid #ffffff;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #ffffff;
           "></div>
         </div>
 
@@ -169,13 +178,13 @@ const createYandexDestinationBubbleIcon = (timeStr: string) => {
           border-radius: 50%;
           background: #ffffff;
           border: 3.5px solid #334155;
-          margin-top: 6px;
+          margin-top: 5px;
           box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.2);
         "></div>
       </div>
     `,
-    iconSize: [160, 65],
-    iconAnchor: [80, 60]
+    iconSize: [160, 50],
+    iconAnchor: [80, 43]
   });
 };
 
@@ -185,27 +194,29 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
     className: 'custom-leaflet-marker',
     html: `
       <div style="
+        width: 120px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        transform: translate(-50%, -100%);
+        margin: 0;
+        padding: 0;
       ">
         <!-- Red Map Pin Teardrop Shape -->
         <div style="
-          width: 44px;
-          height: 44px;
+          width: 42px;
+          height: 42px;
           border-radius: 50% 50% 50% 0;
           background: #ef4444;
           transform: rotate(-45deg);
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
-          border: 2.5px solid #dc2626;
+          box-shadow: 0 6px 14px rgba(239, 68, 68, 0.5);
+          border: 2px solid #dc2626;
         ">
           <img src="${photoUrl}" style="
-            width: 31px;
-            height: 31px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             transform: rotate(45deg);
             object-fit: cover;
@@ -221,7 +232,7 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
           font-weight: 800;
           padding: 2px 7px;
           border-radius: 10px;
-          margin-top: 4px;
+          margin-top: 2px;
           white-space: nowrap;
           box-shadow: 0 2px 8px rgba(0,0,0,0.35);
           border: 1.5px solid white;
@@ -230,8 +241,8 @@ const createStudentPhotoPinIcon = (photoUrl: string, name: string, orderNumber: 
         </div>
       </div>
     `,
-    iconSize: [130, 65],
-    iconAnchor: [65, 55]
+    iconSize: [120, 68],
+    iconAnchor: [60, 42]
   });
 };
 
