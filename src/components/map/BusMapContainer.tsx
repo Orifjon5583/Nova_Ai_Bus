@@ -37,6 +37,7 @@ interface BusMapProps {
   routeAlerts?: RouteAlert[];
   height?: string;
   onMapClick?: (lat: number, lng: number) => void;
+  followBus?: boolean;
 }
 
 export default function BusMapContainer({
@@ -44,11 +45,12 @@ export default function BusMapContainer({
   students = [],
   routeCoords = [],
   center = [41.5420, 60.6350],
-  zoom = 13,
+  zoom = 14,
   emergencyAlerts = [],
   routeAlerts = [],
   height = '450px',
-  onMapClick
+  onMapClick,
+  followBus = false
 }: BusMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maptilersdk.Map | null>(null);
@@ -84,7 +86,7 @@ export default function BusMapContainer({
     return () => { isMounted = false; };
   }, [students, routeCoords]);
 
-  // 2. Initialize MapTiler Vector Map
+  // 2. Initialize 2D Flat MapTiler Vector Map (Optimized for mobile phones and driver navigator)
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -96,8 +98,9 @@ export default function BusMapContainer({
       style: maptilersdk.MapStyle.STREETS,
       center: initialCenter,
       zoom: zoom,
-      pitch: 28, // Modern 3D view angle
+      pitch: 0, // 2D flat top-down view (Lightweight & high clarity on mobile screens)
       bearing: 0,
+      touchPitch: false, // Prevent accidental 3D tilt on phone touch screens
       navigationControl: 'bottom-right',
       geolocateControl: false
     });
@@ -116,16 +119,19 @@ export default function BusMapContainer({
     };
   }, []);
 
-  // 3. Update Map Center & Zoom dynamically
+  // 3. Update Map Center & Zoom dynamically (or Follow Bus if enabled)
   useEffect(() => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.easeTo({
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (!followBus) {
+      map.easeTo({
         center: [center[1], center[0]],
         zoom: zoom,
-        duration: 1000
+        duration: 800
       });
     }
-  }, [center, zoom]);
+  }, [center, zoom, followBus]);
 
   // 4. Draw MapTiler Directions Traffic Polylines (GeoJSON Layers)
   useEffect(() => {
@@ -145,10 +151,10 @@ export default function BusMapContainer({
       const seg4 = geoPoints.slice(segLength * 3, geoPoints.length);
 
       const segments = [
-        { id: 'traffic-seg-1', data: seg1, color: '#22c55e' }, // Green
-        { id: 'traffic-seg-2', data: seg2, color: '#eab308' }, // Yellow
-        { id: 'traffic-seg-3', data: seg3, color: '#ef4444' }, // Red
-        { id: 'traffic-seg-4', data: seg4, color: '#22c55e' }  // Green
+        { id: 'traffic-seg-1', data: seg1, color: '#22c55e' }, // Green (Free Flow)
+        { id: 'traffic-seg-2', data: seg2, color: '#eab308' }, // Yellow (Moderate)
+        { id: 'traffic-seg-3', data: seg3, color: '#ef4444' }, // Red (Traffic Jam)
+        { id: 'traffic-seg-4', data: seg4, color: '#22c55e' }  // Green (Free Flow)
       ];
 
       segments.forEach(seg => {
@@ -170,7 +176,7 @@ export default function BusMapContainer({
             }
           });
 
-          // Glow outline casing
+          // Outer white casing for high 2D readability on mobile
           map.addLayer({
             id: `${seg.id}-glow`,
             type: 'line',
@@ -182,7 +188,7 @@ export default function BusMapContainer({
             paint: {
               'line-color': '#ffffff',
               'line-width': 8,
-              'line-opacity': 0.8
+              'line-opacity': 0.9
             }
           });
 
@@ -197,7 +203,7 @@ export default function BusMapContainer({
             },
             paint: {
               'line-color': seg.color,
-              'line-width': 5,
+              'line-width': 5.5,
               'line-opacity': 0.95
             }
           });
@@ -228,16 +234,16 @@ export default function BusMapContainer({
         display: flex;
         flex-direction: column;
         align-items: center;
-        transform: translateY(-8px);
+        transform: translateY(-6px);
       ">
         <div style="
           background: #ffffff;
           color: #0f172a;
           font-weight: 800;
-          font-size: 12px;
-          padding: 5px 12px;
-          border-radius: 16px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+          font-size: 11px;
+          padding: 4px 10px;
+          border-radius: 14px;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.22);
           text-align: center;
           position: relative;
           border: 1.5px solid #cbd5e1;
@@ -257,23 +263,23 @@ export default function BusMapContainer({
           "></div>
         </div>
         <div style="
-          width: 14px;
-          height: 14px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
           background: #ffffff;
-          border: 3.5px solid #334155;
-          margin-top: 5px;
-          box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.2);
+          border: 3px solid #334155;
+          margin-top: 4px;
+          box-shadow: 0 0 0 2px rgba(51, 65, 85, 0.2);
         "></div>
       </div>
     `;
 
     const marker = new maptilersdk.Marker({ element: schoolEl, anchor: 'bottom' })
       .setLngLat([SCHOOL_LOCATION.lng, SCHOOL_LOCATION.lat])
-      .setPopup(new maptilersdk.Popup({ offset: 25 }).setHTML(`
+      .setPopup(new maptilersdk.Popup({ offset: 20 }).setHTML(`
         <div style="padding: 4px;">
-          <h4 style="font-weight: bold; color: #2563eb; margin: 0;">${SCHOOL_LOCATION.name}</h4>
-          <p style="font-size: 11px; color: #64748b; margin-top: 4px;">${SCHOOL_LOCATION.address}</p>
+          <h4 style="font-weight: bold; color: #2563eb; margin: 0; font-size: 13px;">${SCHOOL_LOCATION.name}</h4>
+          <p style="font-size: 11px; color: #64748b; margin-top: 3px;">${SCHOOL_LOCATION.address}</p>
         </div>
       `))
       .addTo(map);
@@ -301,38 +307,38 @@ export default function BusMapContainer({
           align-items: center;
         ">
           <div style="
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50% 50% 50% 0;
             background: #ef4444;
             transform: rotate(-45deg);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 14px rgba(239, 68, 68, 0.5);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.45);
             border: 2px solid #dc2626;
           ">
             <img src="${student.photo_url}" style="
-              width: 28px;
-              height: 28px;
+              width: 25px;
+              height: 25px;
               border-radius: 50%;
               transform: rotate(45deg);
               object-fit: cover;
-              border: 2px solid white;
+              border: 1.5px solid white;
               background: #ffffff;
             " alt="${student.first_name}" />
           </div>
           <div style="
             background: #0f172a;
             color: #ffffff;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 800;
-            padding: 2px 7px;
-            border-radius: 10px;
+            padding: 1.5px 6px;
+            border-radius: 8px;
             margin-top: 2px;
             white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-            border: 1.5px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            border: 1px solid white;
           ">
             ${idx + 1}-bekat: ${student.first_name}
           </div>
@@ -341,16 +347,16 @@ export default function BusMapContainer({
 
       const marker = new maptilersdk.Marker({ element: studentEl, anchor: 'bottom' })
         .setLngLat([student.address.longitude, student.address.latitude])
-        .setPopup(new maptilersdk.Popup({ offset: 25 }).setHTML(`
-          <div style="padding: 6px;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-              <img src="${student.photo_url}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />
+        .setPopup(new maptilersdk.Popup({ offset: 20 }).setHTML(`
+          <div style="padding: 4px;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+              <img src="${student.photo_url}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
               <div>
-                <h4 style="font-weight: bold; margin: 0; font-size: 13px;">${student.first_name} ${student.last_name}</h4>
-                <p style="font-size: 11px; color: #4f46e5; margin: 0;">${student.class_name}</p>
+                <h4 style="font-weight: bold; margin: 0; font-size: 12px;">${student.first_name} ${student.last_name}</h4>
+                <p style="font-size: 10px; color: #4f46e5; margin: 0;">${student.class_name}</p>
               </div>
             </div>
-            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;"><strong>Manzil:</strong> ${student.address.address_text}</p>
+            <p style="font-size: 10px; color: #64748b; margin: 3px 0 0 0;"><strong>Manzil:</strong> ${student.address.address_text}</p>
           </div>
         `))
         .addTo(map);
@@ -368,7 +374,7 @@ export default function BusMapContainer({
     return () => clearInterval(interval);
   }, [roadCoordinates]);
 
-  // 8. Render & Animate Vehicle Marker on MapTiler Polyline
+  // 8. Render & Animate Vehicle Marker on MapTiler Polyline with Smooth 2D Heading
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || buses.length === 0 || roadCoordinates.length === 0) return;
@@ -387,7 +393,7 @@ export default function BusMapContainer({
       if (!marker) {
         const carEl = document.createElement('div');
         carEl.className = `maptiler-bus-marker-${b.vehicle.id}`;
-        carEl.style.width = '120px';
+        carEl.style.width = '110px';
         carEl.style.display = 'flex';
         carEl.style.flexDirection = 'column';
         carEl.style.alignItems = 'center';
@@ -403,6 +409,14 @@ export default function BusMapContainer({
       // Smoothly update position on MapTiler map
       marker.setLngLat([currentPos[1], currentPos[0]]);
 
+      // Follow bus camera if enabled for mobile driver navigator mode
+      if (followBus) {
+        map.easeTo({
+          center: [currentPos[1], currentPos[0]],
+          duration: 1000
+        });
+      }
+
       // Update inner graphic HTML with heading rotation
       const carEl = marker.getElement();
       carEl.innerHTML = `
@@ -411,16 +425,16 @@ export default function BusMapContainer({
           background: #fbbf24;
           color: #0f172a;
           font-weight: 900;
-          padding: 3px 10px;
+          padding: 2.5px 9px;
           border-radius: 12px;
-          box-shadow: 0 4px 12px rgba(251, 191, 36, 0.45);
+          box-shadow: 0 4px 10px rgba(251, 191, 36, 0.45);
           text-align: center;
           position: relative;
           border: 2px solid #ffffff;
           margin-bottom: 2px;
         ">
-          <div style="font-size: 13px; line-height: 1.1; font-weight: 900;">3</div>
-          <div style="font-size: 9px; font-weight: 800; margin-top: -2px;">daq</div>
+          <div style="font-size: 12px; line-height: 1.1; font-weight: 900;">3</div>
+          <div style="font-size: 8.5px; font-weight: 800; margin-top: -2px;">daq</div>
           <div style="
             position: absolute;
             bottom: -5px;
@@ -434,18 +448,18 @@ export default function BusMapContainer({
           "></div>
         </div>
 
-        <!-- Top-Down Yellow Vehicle SVG rotated along MapTiler road tangent -->
+        <!-- Top-Down 2D Yellow Vehicle SVG rotated along road tangent -->
         <div style="
-          width: 38px;
-          height: 38px;
+          width: 36px;
+          height: 36px;
           display: flex;
           align-items: center;
           justify-content: center;
           transform: rotate(${heading}deg);
-          filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));
+          filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
           transition: transform 0.4s ease;
         ">
-          <svg width="38" height="38" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="25" y="10" width="50" height="80" rx="18" fill="#facc15" stroke="#ca8a04" stroke-width="4"/>
             <rect x="32" y="28" width="36" height="44" rx="8" fill="#eab308"/>
             <path d="M33 28 C33 20 67 20 67 28 L64 36 L36 36 Z" fill="#0f172a"/>
@@ -464,20 +478,20 @@ export default function BusMapContainer({
           background: ${isSos ? '#dc2626' : 'rgba(15, 23, 42, 0.95)'};
           backdrop-filter: blur(8px);
           color: #ffffff;
-          font-size: 9px;
+          font-size: 8.5px;
           font-weight: 800;
-          padding: 2px 6px;
-          border-radius: 8px;
+          padding: 1.5px 5px;
+          border-radius: 7px;
           margin-top: 1px;
           white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           border: 1px solid #facc15;
         ">
           ${isSos ? '🚨 SOS' : `${b.vehicle.plate_number} (${b.speed} km/h)`}
         </div>
       `;
     });
-  }, [buses, activeCarPathIndex, roadCoordinates, emergencyAlerts]);
+  }, [buses, activeCarPathIndex, roadCoordinates, emergencyAlerts, followBus]);
 
   return (
     <div 

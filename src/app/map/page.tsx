@@ -24,8 +24,9 @@ const BusMapContainer = dynamic(() => import('../../components/map/BusMapContain
 export default function FullscreenMapPage() {
   const { vehicles, students, busLocations, emergencyAlerts, routeAlerts } = useSystem();
   const [showPassengerList, setShowPassengerList] = useState(false);
+  const [followBus, setFollowBus] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>([41.5420, 60.6350]);
-  const [mapZoom, setMapZoom] = useState(13);
+  const [mapZoom, setMapZoom] = useState(14);
 
   const activeBus = vehicles.find(v => v.id === 1) || vehicles[0];
   const activeBusState = busLocations[activeBus?.id || 1];
@@ -42,10 +43,12 @@ export default function FullscreenMapPage() {
     if (activeBusState) {
       setMapCenter([activeBusState.lat, activeBusState.lng]);
       setMapZoom(16);
+      setFollowBus(true);
     }
   };
 
   const handleRecenterSchool = () => {
+    setFollowBus(false);
     setMapCenter([SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng]);
     setMapZoom(16);
   };
@@ -81,6 +84,20 @@ export default function FullscreenMapPage() {
         {/* Right Side: Quick Map Controls & Passengers Toggle */}
         <div className="flex items-center gap-2 pointer-events-auto">
           
+          {/* Driver Navigation Follow Mode Toggle */}
+          <button
+            onClick={() => setFollowBus(!followBus)}
+            className={`px-3.5 py-2.5 backdrop-blur-2xl rounded-2xl border text-xs font-black shadow-2xl transition flex items-center gap-1.5 ${
+              followBus 
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 border-yellow-300 animate-pulse' 
+                : 'bg-slate-900/90 hover:bg-slate-800 text-amber-400 border-white/10'
+            }`}
+            title="Haydovchi Navigatr Rejimi (Avtobusni kuzatish)"
+          >
+            <Compass className="w-4 h-4" />
+            <span>{followBus ? '🧭 Navigatr Faol' : '🧭 Navigatr'}</span>
+          </button>
+
           <button
             onClick={handleRecenterBus}
             className="px-3.5 py-2.5 bg-slate-900/90 backdrop-blur-2xl hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded-2xl border border-white/10 text-xs font-bold shadow-2xl transition flex items-center gap-1.5"
@@ -194,6 +211,7 @@ export default function FullscreenMapPage() {
           emergencyAlerts={emergencyAlerts}
           routeAlerts={routeAlerts}
           height="100%"
+          followBus={followBus}
         />
       </div>
 
