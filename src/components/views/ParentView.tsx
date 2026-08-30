@@ -83,17 +83,17 @@ export default function ParentView() {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'picked_up':
-        return { label: 'Uyidan olindi', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: Bus };
+        return { label: 'Uyidan olindi', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', icon: Bus };
       case 'arrived_school':
-        return { label: 'Maktabga yetib keldi', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: CheckCircle2 };
+        return { label: 'Maktabga yetib keldi', color: 'bg-blue-500/20 text-blue-300 border-blue-500/40', icon: CheckCircle2 };
       case 'left_school':
-        return { label: 'Maktabdan chiqdi (Uyga yo\'lda)', color: 'bg-purple-100 text-purple-800 border-purple-300', icon: Navigation };
+        return { label: 'Maktabdan chiqdi (Uyga yo\'lda)', color: 'bg-purple-500/20 text-purple-300 border-purple-500/40', icon: Navigation };
       case 'arrived_home':
-        return { label: 'Uyiga xavfsiz yetkazildi', color: 'bg-teal-100 text-teal-800 border-teal-300', icon: ShieldCheck };
+        return { label: 'Uyiga xavfsiz yetkazildi', color: 'bg-teal-500/20 text-teal-300 border-teal-500/40', icon: ShieldCheck };
       case 'cancelled':
-        return { label: 'Bugun foydalanmaydi', color: 'bg-slate-100 text-slate-700 border-slate-300', icon: X };
+        return { label: 'Bugun foydalanmaydi', color: 'bg-slate-800 text-slate-400 border-slate-700', icon: X };
       default:
-        return { label: 'Avtobus kutilmoqda', color: 'bg-amber-100 text-amber-800 border-amber-300', icon: Clock };
+        return { label: 'Avtobus kutilmoqda', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', icon: Clock };
     }
   };
 
@@ -105,9 +105,9 @@ export default function ParentView() {
       
       {/* 1. Unconfirmed Location Alert Banner for Parent */}
       {student && (!student.address || !student.address.is_confirmed) && (
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white rounded-3xl p-4 sm:p-6 shadow-xl border-2 border-blue-400 animate-in fade-in zoom-in duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-3xl p-4 sm:p-6 shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[11px] font-bold uppercase tracking-wider text-blue-100">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[11px] font-bold uppercase tracking-wider text-blue-100 backdrop-blur-md border border-white/20">
               <MapPin className="w-3.5 h-3.5 text-blue-200" /> UY MANZILINI BELGILASH TALAB ETILADI
             </span>
             <h3 className="font-extrabold text-base sm:text-xl">
@@ -120,7 +120,7 @@ export default function ParentView() {
 
           <button
             onClick={() => setIsLocModalOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 bg-white text-blue-950 hover:bg-blue-50 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2 shrink-0"
+            className="w-full sm:w-auto px-6 py-3.5 bg-white text-blue-950 hover:bg-blue-50 font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl active:scale-95 transition flex items-center justify-center gap-2 shrink-0 border border-white/30"
           >
             <MapPin className="w-4 h-4 text-blue-600" />
             Hozirgi Joylashuvni Belgilash
@@ -128,12 +128,12 @@ export default function ParentView() {
         </div>
       )}
 
-      {/* 2. 07:00 Morning Prompt Card (Mobile First) */}
+      {/* 2. 07:00 Morning Prompt Card (Apple Glassmorphism Banner) */}
       {(!todayConfirmation || todayConfirmation.responded_at === undefined) && (
-        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-3xl p-4 sm:p-6 text-white shadow-xl relative overflow-hidden animate-in fade-in zoom-in duration-300">
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-3xl p-4 sm:p-6 text-white shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-300 border border-white/20">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[11px] font-bold uppercase tracking-wider text-amber-100">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[11px] font-bold uppercase tracking-wider text-amber-100 backdrop-blur-md border border-white/20">
                 <Clock className="w-3.5 h-3.5" /> 07:00 Avtomatik Bildirishnoma
               </span>
               <h3 className="font-extrabold text-lg sm:text-2xl mt-1 leading-snug">
@@ -147,13 +147,13 @@ export default function ParentView() {
             <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto shrink-0 pt-2 sm:pt-0">
               <button
                 onClick={() => handleMorningPromptAnswer(student.id, true)}
-                className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 font-black text-sm text-white rounded-2xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 font-black text-sm text-white rounded-2xl shadow-xl active:scale-95 transition flex items-center justify-center gap-2 border border-white/20"
               >
                 <Check className="w-5 h-5" /> Ha, foydalanadi
               </button>
               <button
                 onClick={() => handleMorningPromptAnswer(student.id, false)}
-                className="w-full sm:w-auto px-6 py-3.5 bg-white/20 hover:bg-white/30 font-bold text-sm text-white rounded-2xl active:scale-95 transition flex items-center justify-center gap-2 border border-white/40"
+                className="w-full sm:w-auto px-6 py-3.5 bg-white/20 hover:bg-white/30 font-bold text-sm text-white rounded-2xl active:scale-95 transition flex items-center justify-center gap-2 border border-white/40 backdrop-blur-md"
               >
                 <X className="w-5 h-5" /> Yo'q, bugun bormaydi
               </button>
@@ -162,25 +162,25 @@ export default function ParentView() {
         </div>
       )}
 
-      {/* 3. Top Student Overview Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
+      {/* 3. Top Student Overview Bar (Apple Glassmorphic Card) */}
+      <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
         
         <div className="flex items-center gap-3 sm:gap-4">
           <img 
             src={student?.photo_url} 
             alt={student?.first_name} 
-            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-indigo-500 shadow-md shrink-0"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-indigo-500/50 shadow-xl shadow-indigo-500/20 shrink-0"
           />
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+              <h2 className="text-lg sm:text-xl font-black text-white">
                 {student?.first_name} {student?.last_name}
               </h2>
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                 {student?.class_name}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="line-clamp-1">{studentAddress?.address_text}</span>
             </p>
@@ -188,16 +188,16 @@ export default function ParentView() {
         </div>
 
         {/* Status Badge & Location Change Button */}
-        <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap w-full md:w-auto justify-between sm:justify-start pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap w-full md:w-auto justify-between sm:justify-start pt-2 md:pt-0 border-t md:border-t-0 border-slate-800">
           <button
             onClick={() => setIsLocModalOpen(true)}
-            className="px-3.5 py-2 rounded-2xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 border border-blue-200 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1.5 transition"
+            className="px-3.5 py-2.5 rounded-2xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 font-bold text-xs flex items-center gap-1.5 transition shadow-inner"
           >
             <Edit3 className="w-3.5 h-3.5" />
             Manzilni O'zgartirish
           </button>
 
-          <div className={`px-3.5 py-2 rounded-2xl border ${currentStatusInfo.color} font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm`}>
+          <div className={`px-4 py-2.5 rounded-2xl border ${currentStatusInfo.color} font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg backdrop-blur-md`}>
             <StatusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>{currentStatusInfo.label}</span>
           </div>
@@ -205,24 +205,24 @@ export default function ParentView() {
 
       </div>
 
-      {/* 4. Permanent Student QR Badge Card for Parent */}
+      {/* 4. Permanent Student QR Badge Card for Parent (Apple Glass Card) */}
       {student && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
+        <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
           <div className="space-y-1.5 text-center sm:text-left">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-full text-[11px] font-bold uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-[11px] font-bold uppercase tracking-wider border border-indigo-500/30">
               <QrCode className="w-3.5 h-3.5" /> O'zgarmas Doimiy QR Kod Guvohnomasi
             </span>
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg">
+            <h3 className="font-extrabold text-white text-base sm:text-lg">
               {student.first_name} {student.last_name} ({student.student_code})
             </h3>
-            <p className="text-xs text-slate-500 max-w-lg">
+            <p className="text-xs text-slate-400 max-w-lg">
               Ushbu QR kod farzandingiz uchun 1 marta biriktirilgan bo'lib, <strong>butun o'quv yili davomida o'zgarmaydi</strong>. Haydovchi har kuni transportga chiqishda faqat shu QR kodni skaner qiladi.
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-1.5 p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="flex flex-col items-center gap-1.5 p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 shrink-0 shadow-inner">
             <QRCodeDisplay value={student.qr_code} size={110} />
-            <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
+            <span className="text-[10px] font-mono font-bold text-slate-300">
               {student.qr_code}
             </span>
           </div>
@@ -234,19 +234,19 @@ export default function ParentView() {
         
         {/* Left 2 Cols: Live Map & Bus Location */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3 sm:space-y-4">
+          <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-3 sm:space-y-4">
             
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
               <div>
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base flex items-center gap-2">
-                  <Navigation className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+                <h3 className="font-black text-white text-sm sm:text-base flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
                   Jonli Transport Kuzatuvi (GPS Map)
                 </h3>
-                <p className="text-xs text-slate-500">Real vaqt rejimida avtobus harakati</p>
+                <p className="text-xs text-slate-400">Real vaqt rejimida avtobus harakati</p>
               </div>
 
               {/* ETA Badge */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3.5 py-1.5 rounded-2xl text-xs font-bold shadow-md flex items-center gap-2">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-lg shadow-blue-600/20 flex items-center gap-2 border border-white/10">
                 <Clock className="w-3.5 h-3.5 text-blue-200" />
                 <span>ETA: ~{etaMinutes} daqiqa qoldi</span>
               </div>
@@ -266,13 +266,13 @@ export default function ParentView() {
               height="320px"
             />
 
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl text-xs text-blue-900 dark:text-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5">
+            <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-slate-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5">
               <span className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                 Hozirgi koordinata: <strong>{busState?.lat.toFixed(4)}, {busState?.lng.toFixed(4)}</strong>
               </span>
               <span className="flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 Avtobus tezligi: <strong>{busState?.speed} km/h</strong>
               </span>
             </div>
@@ -280,63 +280,63 @@ export default function ParentView() {
           </div>
         </div>
 
-        {/* Right Col: Today's Transport Status Timeline */}
+        {/* Right Col: Today's Transport Status Timeline (Glass Card) */}
         <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-5">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2 border-b pb-3">
-              <History className="w-5 h-5 text-indigo-600 shrink-0" />
+          <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5">
+            <h3 className="font-black text-white text-base flex items-center gap-2 border-b border-slate-800 pb-3">
+              <History className="w-5 h-5 text-indigo-400 shrink-0" />
               Bugungi Holat Bosqichlari
             </h3>
 
             {/* Steps Timeline */}
-            <div className="relative pl-6 space-y-5 sm:space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
+            <div className="relative pl-6 space-y-5 sm:space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
               
               <div className="relative">
-                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-white flex items-center justify-center ${todayConfirmation ? 'border-emerald-500 text-emerald-500' : 'border-amber-500 text-amber-500'}`}>
+                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-slate-900 flex items-center justify-center ${todayConfirmation ? 'border-emerald-500 text-emerald-400' : 'border-amber-500 text-amber-400'}`}>
                   <Check className="w-3 h-3" />
                 </div>
-                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">07:00 - Ertalabki Tasdiq</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <h4 className="font-bold text-xs text-white">07:00 - Ertalabki Tasdiq</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
                   {todayConfirmation?.will_use_transport ? 'Ota-ona foydalanishini tasdiqladi (Ha)' : '07:00 Avtomatik so\'rovnoma'}
                 </p>
               </div>
 
               <div className="relative">
-                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-white flex items-center justify-center ${tripStudentState?.pickup_time ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-300'}`}>
+                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-slate-900 flex items-center justify-center ${tripStudentState?.pickup_time ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-700 text-slate-500'}`}>
                   <Bus className="w-3 h-3" />
                 </div>
-                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">Uyidan Olinishi</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5" suppressHydrationWarning>
+                <h4 className="font-bold text-xs text-white">Uyidan Olinishi</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5" suppressHydrationWarning>
                   {tripStudentState?.pickup_time ? `Vaqti: ${new Date(tripStudentState.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (QR kod)` : 'Kutilmoqda (Taxminan 07:30)'}
                 </p>
               </div>
 
               <div className="relative">
-                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-white flex items-center justify-center ${tripStudentState?.school_arrival_time ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300 text-slate-300'}`}>
+                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-slate-900 flex items-center justify-center ${tripStudentState?.school_arrival_time ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-700 text-slate-500'}`}>
                   <CheckCircle2 className="w-3 h-3" />
                 </div>
-                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">Maktabga Yetib Kelish</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5" suppressHydrationWarning>
+                <h4 className="font-bold text-xs text-white">Maktabga Yetib Kelish</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5" suppressHydrationWarning>
                   {tripStudentState?.school_arrival_time ? `Vaqti: ${new Date(tripStudentState.school_arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Kutilmoqda (Taxminan 07:55)'}
                 </p>
               </div>
 
               <div className="relative">
-                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-white flex items-center justify-center ${tripStudentState?.school_departure_time ? 'border-purple-500 bg-purple-500 text-white' : 'border-slate-300 text-slate-300'}`}>
+                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-slate-900 flex items-center justify-center ${tripStudentState?.school_departure_time ? 'border-purple-500 bg-purple-500 text-white' : 'border-slate-700 text-slate-500'}`}>
                   <Navigation className="w-3 h-3" />
                 </div>
-                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">Kechki Maktabdan Chiqish</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5" suppressHydrationWarning>
+                <h4 className="font-bold text-xs text-white">Kechki Maktabdan Chiqish</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5" suppressHydrationWarning>
                   {tripStudentState?.school_departure_time ? `Vaqti: ${new Date(tripStudentState.school_departure_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Reja: 15:30'}
                 </p>
               </div>
 
               <div className="relative">
-                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-white flex items-center justify-center ${tripStudentState?.home_arrival_time ? 'border-teal-500 bg-teal-500 text-white' : 'border-slate-300 text-slate-300'}`}>
+                <div className={`absolute -left-6 top-0 w-5 h-5 rounded-full border-2 bg-slate-900 flex items-center justify-center ${tripStudentState?.home_arrival_time ? 'border-teal-500 bg-teal-500 text-white' : 'border-slate-700 text-slate-500'}`}>
                   <ShieldCheck className="w-3 h-3" />
                 </div>
-                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">Uyga Yetkazildi</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5" suppressHydrationWarning>
+                <h4 className="font-bold text-xs text-white">Uyga Yetkazildi</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5" suppressHydrationWarning>
                   {tripStudentState?.home_arrival_time ? `Vaqti: ${new Date(tripStudentState.home_arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Reja: 16:10'}
                 </p>
               </div>
@@ -347,19 +347,19 @@ export default function ParentView() {
 
       </div>
 
-      {/* Parent Location Setup Wizard Modal */}
+      {/* Parent Location Setup Wizard Modal (Apple Glass Modal) */}
       {isLocModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="backdrop-blur-2xl bg-slate-900/90 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             
             <div className="space-y-1">
-              <span className="text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/30">
                 Uy Joylashuvini Belgilash va Tasdiqlash
               </span>
-              <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">
+              <h3 className="font-black text-lg text-white pt-1">
                 {student.first_name} ning Bekat Manzili
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 Telefoningiz GPS sensorini yoqing yoki koordinatani belgilang.
               </p>
             </div>
@@ -371,7 +371,7 @@ export default function ParentView() {
                 type="button"
                 onClick={handleDetectCurrentLocation}
                 disabled={isDetectingLoc}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-xs shadow-md hover:from-blue-700 hover:to-indigo-700 transition flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-2xl font-bold text-xs shadow-xl hover:scale-[1.01] active:scale-95 transition flex items-center justify-center gap-2 border border-white/10"
               >
                 <Compass className={`w-4 h-4 ${isDetectingLoc ? 'animate-spin' : ''}`} />
                 {isDetectingLoc ? 'GPS Joylashuv Aniqlanmoqda...' : '📱 Hozirgi Telefon GPS Joylashuvimni Aniqlash'}
@@ -379,7 +379,7 @@ export default function ParentView() {
 
               {/* Interactive Preview Map */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Xaritada Joylashuvni Tekshirish</label>
+                <label className="text-xs font-bold text-slate-300">Xaritada Joylashuvni Tekshirish</label>
                 <BusMap 
                   center={[locLat, locLng]}
                   zoom={15}
@@ -395,39 +395,39 @@ export default function ParentView() {
               {/* Address inputs */}
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Manzil Nomi (Ko'cha, Uy raqami)</label>
+                  <label className="text-xs font-bold text-slate-300">Manzil Nomi (Ko'cha, Uy raqami)</label>
                   <input 
                     type="text"
                     required
                     value={locAddressText}
                     onChange={(e) => setLocAddressText(e.target.value)}
-                    className="w-full p-2.5 border rounded-xl text-xs mt-1"
+                    className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
                     placeholder="Toshkent sh., Yunusobod 11-mavze 24-uy"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Haydovchi Uchun Eslatma</label>
+                  <label className="text-xs font-bold text-slate-300">Haydovchi Uchun Eslatma</label>
                   <input 
                     type="text"
                     value={locNote}
                     onChange={(e) => setLocNote(e.target.value)}
-                    className="w-full p-2.5 border rounded-xl text-xs mt-1"
+                    className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
                     placeholder="Darvoza oldida kutadi / Dom pod'yezdi"
                   />
                 </div>
               </div>
 
               {/* Double Confirmation Checkbox */}
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-start gap-2.5">
+              <div className="p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-2xl flex items-start gap-2.5">
                 <input 
                   type="checkbox"
                   id="confirmCheck"
                   checked={isConfirmedCheckbox}
                   onChange={(e) => setIsConfirmedCheckbox(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 text-blue-600 rounded"
+                  className="w-4 h-4 mt-0.5 text-blue-600 rounded bg-slate-950 border-slate-800"
                 />
-                <label htmlFor="confirmCheck" className="text-xs text-amber-900 dark:text-amber-200 font-semibold cursor-pointer">
+                <label htmlFor="confirmCheck" className="text-xs text-amber-200 font-semibold cursor-pointer">
                   Manzil va koordinatalar 100% to'g'riligiga ishonchim komil va tasdiqlayman.
                 </label>
               </div>
@@ -435,14 +435,14 @@ export default function ParentView() {
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center gap-1.5"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xl transition flex items-center justify-center gap-1.5 border border-white/10"
                 >
                   <CheckSquare className="w-4 h-4" /> Manzilni Tasdiqlash va Saqlash
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsLocModalOpen(false)}
-                  className="px-4 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs hover:bg-slate-300 transition"
+                  className="px-4 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold text-xs hover:bg-slate-700 transition border border-slate-700"
                 >
                   Bekor Qilish
                 </button>
