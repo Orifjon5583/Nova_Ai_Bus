@@ -1,0 +1,324 @@
+// Nova Maktab Bus - PostgreSQL Prisma ORM Schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  driver
+  parent
+}
+
+enum StudentStatus {
+  active
+  inactive
+  graduated
+}
+
+enum Gender {
+  male
+  female
+}
+
+enum ConfirmationMethod {
+  qr
+  face
+  manual
+}
+
+enum TripType {
+  morning
+  evening
+}
+
+enum TripStatus {
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+enum StudentTripStatus {
+  waiting
+  picked_up
+  dropped_off
+  absent
+}
+
+enum AlertType {
+  speed_warning
+  off_route
+  delay
+  sos
+}
+
+// 1. Foydalanuvchilar (Admins, Drivers, Parents)
+model User {
+  id            Int            @id @default(autoincrement())
+  role          Role
+  firstName     String         @map("first_name")
+  lastName      String         @map("last_name")
+  phone         String         @unique
+  passwordHash  String         @map("password_hash")
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  parent        Parent?
+  driver        Driver?
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+// 2. Ota-onalar
+model Parent {
+  id                   Int                           @id @default(autoincrement())
+  userId               Int                           @unique @map("user_id")
+  user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramChatId       String?                       @map("telegram_chat_id")
+  createdAt            DateTime                      @default(now()) @map("created_at")
+
+  students             Student[]
+  dailyConfirmations   DailyTransportConfirmation[]
+
+  @@map("parents")
+}
+
+// 3. Haydovchilar
+model Driver {
+  id              Int              @id @default(autoincrement())
+  userId          Int              @unique @map("user_id")
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String           @unique @map("license_number")
+  vehicleId       Int?             @unique @map("vehicle_id")
+  vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id])
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  trips           Trip[]
+  emergencyAlerts EmergencyAlert[]
+
+  @@map("drivers")
+}
+
+// 4. Avtobuslar (Transport vositalari)
+model Vehicle {
+  id            Int              @id @default(autoincrement())
+  plateNumber   String           @unique @map("plate_number")
+  vehicleName   String           @map("vehicle_name")
+  model         String
+  capacity      Int
+  status        String           @default("active") // active, maintenance, inactive
+  gpsDeviceId   String?          @unique @map("gps_device_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  driver        Driver?
+  routes        Route[]
+  trips         Trip[]
+  routeAlerts   RouteAlert[]
+  emergencyAlerts EmergencyAlert[]
+
+  @@map("vehicles")
+}
+
+// 5. O'quvchilar
+model Student {
+  id             Int              @id @default(autoincrement())
+  parentId       Int              @map("parent_id")
+  parent         Parent           @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  firstName      String           @map("first_name")
+  lastName       String           @map("last_name")
+  birthDate      DateTime?        @map("birth_date")
+  gender         Gender?
+  className      String           @map("class_name")
+  studentCode    String           @unique @map("student_code")
+  qrCode         String           @unique @map("qr_code") // O'zgarmas doimiy QR
+  photoUrl       String?          @map("photo_url")
+  status         StudentStatus    @default(active)
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  address        StudentAddress?
+  routeStudents  RouteStudent[]
+  tripStudents   TripStudent[]
+  dailyConfirmations DailyTransportConfirmation[]
+  notifications  Notification[]
+
+  @@map("students")
+}
+
+// 6. O'quvchilar Uy Manzili va GPS Koordinatalari
+model StudentAddress {
+  id                  Int      @id @default(autoincrement())
+  studentId           Int      @unique @map("student_id")
+  student             Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  addressText         String   @map("address_text")
+  latitude            Float
+  longitude           Float
+  pickupNote          String?  @map("pickup_note")
+  isConfirmedByParent Boolean  @default(true) @map("is_confirmed_by_parent")
+  isConfirmedByAdmin  Boolean  @default(true) @map("is_confirmed_by_admin")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("student_addresses")
+}
+
+// 7. Quyi Marshrutlar
+model Route {
+  id          Int            @id @default(autoincrement())
+  name        String
+  description String?
+  vehicleId   Int?           @map("vehicle_id")
+  vehicle     Vehicle?       @relation(fields: [vehicleId], references: [id])
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  routeStudents RouteStudent[]
+  trips         Trip[]
+
+  @@map("routes")
+}
+
+// 8. Marshrutdagi O'quvchilar Ketma-Ketligi (Optimal Sequence)
+model RouteStudent {
+  id          Int      @id @default(autoincrement())
+  routeId     Int      @map("route_id")
+  route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  studentId   Int      @map("student_id")
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  pickupOrder Int      @map("pickup_order") // 1, 2, 3...
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([routeId, studentId])
+  @@map("route_students")
+}
+
+// 9. Kunlik Qatnovlar (Trips)
+model Trip {
+  id          Int          @id @default(autoincrement())
+  routeId     Int          @map("route_id")
+  route       Route        @relation(fields: [routeId], references: [id])
+  vehicleId   Int          @map("vehicle_id")
+  vehicle     Vehicle      @relation(fields: [vehicleId], references: [id])
+  driverId    Int          @map("driver_id")
+  driver      Driver       @relation(fields: [driverId], references: [id])
+  tripDate    DateTime     @map("trip_date")
+  tripType    TripType     @map("trip_type")
+  status      TripStatus   @default(planned)
+  startedAt   DateTime?    @map("started_at")
+  completedAt DateTime?    @map("completed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  tripStudents TripStudent[]
+  routeAlerts  RouteAlert[]
+  emergencyAlerts EmergencyAlert[]
+
+  @@map("trips")
+}
+
+// 10. Qatnovdagi O'quvchi Holati va QR Tasdiqlash
+model TripStudent {
+  id                  Int                 @id @default(autoincrement())
+  tripId              Int                 @map("trip_id")
+  trip                Trip                @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  studentId           Int                 @map("student_id")
+  student             Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status              StudentTripStatus   @default(waiting)
+  confirmationMethod  ConfirmationMethod? @map("confirmation_method")
+  pickupTime          DateTime?           @map("pickup_time")
+  dropoffTime         DateTime?           @map("dropoff_time")
+  notes               String?
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  @@unique([tripId, studentId])
+  @@map("trip_students")
+}
+
+// 11. Ertalabki 07:00 So'rovnoma Javoblari
+model DailyTransportConfirmation {
+  id               Int      @id @default(autoincrement())
+  studentId        Int      @map("student_id")
+  student          Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parentId         Int      @map("parent_id")
+  parent           Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  confirmationDate DateTime @map("confirmation_date")
+  willUseTransport Boolean  @map("will_use_transport")
+  respondedAt      DateTime @default(now()) @map("responded_at")
+
+  @@unique([studentId, confirmationDate])
+  @@map("daily_transport_confirmations")
+}
+
+// 12. Bildirishnomalar (Push / SMS)
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId Int?     @map("student_id")
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  type      String   // pickup, dropoff, delay, reminder, sos
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  @@map("notifications")
+}
+
+// 13. Favqulodda Signal (SOS)
+model EmergencyAlert {
+  id         Int       @id @default(autoincrement())
+  tripId     Int?      @map("trip_id")
+  trip       Trip?     @relation(fields: [tripId], references: [id])
+  vehicleId  Int       @map("vehicle_id")
+  vehicle    Vehicle   @relation(fields: [vehicleId], references: [id])
+  driverId   Int       @map("driver_id")
+  driver     Driver    @relation(fields: [driverId], references: [id])
+  latitude   Float
+  longitude  Float
+  status     String    @default("active") // active, resolved
+  resolvedAt DateTime? @map("resolved_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@map("emergency_alerts")
+}
+
+// 14. Marshrut Ogohlantirishlari (Tezlik, Yo'ldan chiqish)
+model RouteAlert {
+  id         Int       @id @default(autoincrement())
+  tripId     Int?      @map("trip_id")
+  trip       Trip?     @relation(fields: [tripId], references: [id])
+  vehicleId  Int       @map("vehicle_id")
+  vehicle    Vehicle   @relation(fields: [vehicleId], references: [id])
+  alertType  AlertType @map("alert_type")
+  message    String
+  latitude   Float
+  longitude  Float
+  speed      Float?
+  isResolved Boolean   @default(false) @map("is_resolved")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@map("route_alerts")
+}
+
+// 15. Audit va Xavfsizlik Loglari
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  tableName String   @map("table_name")
+  recordId  Int?     @map("record_id")
+  newData   String?  @map("new_data")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}
