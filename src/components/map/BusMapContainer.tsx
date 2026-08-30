@@ -123,9 +123,16 @@ export default function BusMapContainer({
     });
 
     return () => {
-      if (busMarkerRef.current) busMarkerRef.current.remove();
-      if (schoolMarkerRef.current) schoolMarkerRef.current.remove();
+      if (busMarkerRef.current) {
+        busMarkerRef.current.remove();
+        busMarkerRef.current = null;
+      }
+      if (schoolMarkerRef.current) {
+        schoolMarkerRef.current.remove();
+        schoolMarkerRef.current = null;
+      }
       studentMarkersRef.current.forEach(m => m.remove());
+      studentMarkersRef.current = [];
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -186,7 +193,7 @@ export default function BusMapContainer({
             }
           });
 
-          // Outer casing
+          // Outer white casing
           map.addLayer({
             id: `${seg.id}-glow`,
             type: 'line',
@@ -383,30 +390,7 @@ export default function BusMapContainer({
     const nextPos = roadCoordinates[nextIndex] || currentPos;
     const heading = calculateHeading(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
 
-    if (!busMarkerRef.current) {
-      const carEl = document.createElement('div');
-      carEl.className = 'maptiler-bus-marker';
-      carEl.style.cssText = 'width: 120px; display: flex; flex-direction: column; align-items: center; cursor: pointer; pointer-events: auto; z-index: 100 !important;';
-
-      const marker = new maptilersdk.Marker({ element: carEl, anchor: 'center' })
-        .setLngLat([currentPos[1], currentPos[0]])
-        .addTo(map);
-
-      busMarkerRef.current = marker;
-    }
-
-    const marker = busMarkerRef.current;
-    marker.setLngLat([currentPos[1], currentPos[0]]);
-
-    if (followBus) {
-      map.easeTo({
-        center: [currentPos[1], currentPos[0]],
-        duration: 1000
-      });
-    }
-
-    const carEl = marker.getElement();
-    carEl.innerHTML = `
+    const buildCarHtml = (deg: number) => `
       <!-- Yellow ETA Bubble attached directly on top of the car -->
       <div style="
         background: #fbbf24;
@@ -414,12 +398,12 @@ export default function BusMapContainer({
         font-weight: 900;
         padding: 3px 10px;
         border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.6);
+        box-shadow: 0 4px 14px rgba(251, 191, 36, 0.7);
         text-align: center;
         position: relative;
         border: 2px solid #ffffff;
         margin-bottom: 2px;
-        z-index: 102;
+        z-index: 1002;
       ">
         <div style="font-size: 13px; line-height: 1.1; font-weight: 900;">3</div>
         <div style="font-size: 8.5px; font-weight: 800; margin-top: -2px;">daq</div>
@@ -437,16 +421,16 @@ export default function BusMapContainer({
       </div>
 
       <!-- Top-Down 2D Yellow Vehicle SVG with clear drop shadow -->
-      <div style="
+      <div class="bus-svg-wrapper" style="
         width: 44px;
         height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transform: rotate(${heading}deg);
-        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+        transform: rotate(${deg}deg);
+        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
         transition: transform 0.3s ease;
-        z-index: 101;
+        z-index: 1001;
       ">
         <svg width="44" height="44" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="25" y="10" width="50" height="80" rx="18" fill="#facc15" stroke="#ca8a04" stroke-width="4"/>
@@ -473,13 +457,42 @@ export default function BusMapContainer({
         border-radius: 8px;
         margin-top: 1px;
         white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
         border: 1.5px solid #facc15;
-        z-index: 102;
+        z-index: 1002;
       ">
         ${isSos ? '🚨 SOS' : `${effectiveBus.vehicle.plate_number} (${effectiveBus.speed} km/h)`}
       </div>
     `;
+
+    if (!busMarkerRef.current) {
+      const carEl = document.createElement('div');
+      carEl.className = 'maptiler-bus-marker';
+      carEl.style.cssText = 'width: 120px; display: flex; flex-direction: column; align-items: center; cursor: pointer; pointer-events: auto; z-index: 1000 !important;';
+      carEl.innerHTML = buildCarHtml(heading);
+
+      const marker = new maptilersdk.Marker({ element: carEl, anchor: 'center' })
+        .setLngLat([currentPos[1], currentPos[0]])
+        .addTo(map);
+
+      busMarkerRef.current = marker;
+    } else {
+      busMarkerRef.current.setLngLat([currentPos[1], currentPos[0]]);
+      const carEl = busMarkerRef.current.getElement();
+      const svgBox = carEl.querySelector('.bus-svg-wrapper') as HTMLElement;
+      if (svgBox) {
+        svgBox.style.transform = `rotate(${heading}deg)`;
+      } else {
+        carEl.innerHTML = buildCarHtml(heading);
+      }
+    }
+
+    if (followBus) {
+      map.easeTo({
+        center: [currentPos[1], currentPos[0]],
+        duration: 1000
+      });
+    }
   }, [effectiveBus, activeCarPathIndex, roadCoordinates, emergencyAlerts, followBus]);
 
   return (
