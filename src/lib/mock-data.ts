@@ -268,24 +268,43 @@ export const MOCK_STUDENTS: Student[] = [
   }
 ];
 
+const RAW_ROUTE_1_POINTS: Array<[number, number]> = [
+  [41.3650, 69.2850], // 1-bekat: Yunusobod 11-mavze (Ali)
+  [41.3610, 69.2855], // Ahmad Donish ko'chasi
+  [41.3530, 69.2835], // Ahmad Donish / Amir Temur
+  [41.3480, 69.2810], // 2-bekat: Amir Temur ko'chasi (Madina)
+  [41.3435, 69.2820], // Shahriston metro chorrahasi
+  [41.3380, 69.2810], // 3-bekat: Bodomzor / Sebzor (Jasur)
+  [41.3320, 69.2800], // Amir Temur shoh ko'chasi
+  [41.3280, 69.2785], // Minor metro bekati
+  [41.3245, 69.2710], // Abdulla Qodiriy ko'chasi
+  [41.3210, 69.2620], // Abdulla Qodiriy (G'afur G'ulom bog'i)
+  [41.3180, 69.2530], // Zarqaynar ko'chasi (Chorsu)
+  [41.3150, 69.2470], // Navoiy / Samarqand Darvoza
+  [41.3125, 69.2425], // Qoratosh ko'chasi
+  [41.311082, 69.240562] // Nova Maktab darvozasi (SCHOOL_LOCATION)
+];
+
+function interpolateRoadPath(points: Array<[number, number]>, stepsBetween = 4): Array<[number, number]> {
+  const result: Array<[number, number]> = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [lat1, lng1] = points[i];
+    const [lat2, lng2] = points[i + 1];
+    for (let s = 0; s < stepsBetween; s++) {
+      const frac = s / stepsBetween;
+      result.push([
+        parseFloat((lat1 + (lat2 - lat1) * frac).toFixed(5)),
+        parseFloat((lng1 + (lng2 - lng1) * frac).toFixed(5))
+      ]);
+    }
+  }
+  result.push(points[points.length - 1]);
+  return result;
+}
+
 // Real Tashkent Street Road Coordinates (Following actual avenues and street networks)
 export const ROUTE_STREET_PATHS: Record<number, Array<[number, number]>> = {
-  1: [
-    [41.3650, 69.2850], // 1-bekat: Yunusobod 11-mavze (Ali)
-    [41.3610, 69.2855], // Ahmad Donish ko'chasi
-    [41.3530, 69.2835], // Ahmad Donish / Amir Temur
-    [41.3480, 69.2810], // 2-bekat: Amir Temur ko'chasi (Madina)
-    [41.3435, 69.2820], // Shahriston metro chorrahasi
-    [41.3380, 69.2810], // 3-bekat: Bodomzor / Sebzor (Jasur)
-    [41.3320, 69.2800], // Amir Temur shoh ko'chasi
-    [41.3280, 69.2785], // Minor metro bekati
-    [41.3245, 69.2710], // Abdulla Qodiriy ko'chasi
-    [41.3210, 69.2620], // Abdulla Qodiriy (G'afur G'ulom bog'i)
-    [41.3180, 69.2530], // Zarqaynar ko'chasi (Chorsu)
-    [41.3150, 69.2470], // Navoiy / Samarqand Darvoza
-    [41.3125, 69.2425], // Qoratosh ko'chasi
-    [41.311082, 69.240562] // Nova Maktab darvozasi (SCHOOL_LOCATION)
-  ],
+  1: interpolateRoadPath(RAW_ROUTE_1_POINTS, 4),
   2: [
     [41.2750, 69.2050], // Chilonzor 20-mavze
     [41.2780, 69.2090], // Qatortol ko'chasi

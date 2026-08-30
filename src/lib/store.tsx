@@ -157,6 +157,16 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Simulated GPS movement loop strictly along Tashkent streets
   useEffect(() => {
+    function calculateHeadingAngle(lat1: number, lng1: number, lat2: number, lng2: number): number {
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const lat1Rad = lat1 * Math.PI / 180;
+      const lat2Rad = lat2 * Math.PI / 180;
+      const y = Math.sin(dLng) * Math.cos(lat2Rad);
+      const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+      const brng = Math.atan2(y, x) * 180 / Math.PI;
+      return (brng + 360) % 360;
+    }
+
     const interval = setInterval(() => {
       setBusLocations(prev => {
         const next = { ...prev };
@@ -170,12 +180,15 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const curIdx = indices[vId] ?? 0;
               const nextIdx = (curIdx + 1) % streetPath.length;
               const [nextLat, nextLng] = streetPath[nextIdx];
-              const speed = Math.floor(Math.random() * 12) + 36; // 36 - 48 km/h city street speed
+              const [aheadLat, aheadLng] = streetPath[(nextIdx + 1) % streetPath.length];
+              const heading = Math.round(calculateHeadingAngle(nextLat, nextLng, aheadLat, aheadLng));
+              const speed = Math.floor(Math.random() * 8) + 38; // 38-46 km/h
 
               next[vId] = {
                 ...bus,
                 lat: nextLat,
                 lng: nextLng,
+                heading,
                 speed
               };
 
@@ -185,7 +198,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
         return next;
       });
-    }, 2800);
+    }, 1500);
 
     return () => clearInterval(interval);
   }, []);
