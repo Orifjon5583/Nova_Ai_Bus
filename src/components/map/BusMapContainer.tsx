@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { SCHOOL_LOCATION, ROUTE_STREET_PATHS } from '../../lib/mock-data';
 import { Student, Vehicle, RouteAlert, EmergencyAlert } from '../../types/database';
+import { fetchRealRoadRoute } from '../../lib/routing';
 
 // SVG Icon Strings for Leaflet divIcon HTML rendering
 const schoolSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 22V6l-6-4-6 4v16"/><path d="M6 12h12"/><path d="M6 16h12"/></svg>`;
@@ -297,10 +298,29 @@ export default function BusMapContainer({
   onMapClick
 }: BusMapProps) {
 
-  // Continuous fine-grained road points along Tashkent street network
-  const roadCoordinates: Array<[number, number]> = routeCoords.length > 0 
-    ? routeCoords 
-    : ROUTE_STREET_PATHS[1] || [];
+  // Dynamic high-precision road path state from OSRM backend engine
+  const [roadCoordinates, setRoadCoordinates] = useState<Array<[number, number]>>(
+    routeCoords.length > 0 ? routeCoords : ROUTE_STREET_PATHS[1] || []
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    const waypoints: Array<[number, number]> = routeCoords.length > 0 
+      ? routeCoords 
+      : [
+          [41.3650, 69.2850], // Ali (Yunusobod 11)
+          ...students.filter(s => s.address && s.status === 'active').map(s => [s.address!.latitude, s.address!.longitude] as [number, number]),
+          [SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng]
+        ];
+
+    fetchRealRoadRoute(waypoints).then(coords => {
+      if (isMounted && coords && coords.length > 1) {
+        setRoadCoordinates(coords);
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, [students, routeCoords]);
 
   // Break real road into traffic condition segments (Green = Free, Yellow = Moderate, Red = Traffic Jam)
   const segLength = Math.max(2, Math.floor(roadCoordinates.length / 4));
@@ -405,7 +425,7 @@ export default function BusMapContainer({
           );
         })}
 
-        {/* 4. Real Road Traffic-Colored Polyline (Green - Amber - Red - Green) */}
+        {/* 4. Real OSRM Road Traffic-Colored Polyline (Green - Amber - Red - Green) */}
         {seg1.length > 1 && (
           <Polyline 
             positions={seg1} 
