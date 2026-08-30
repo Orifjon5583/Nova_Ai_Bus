@@ -271,21 +271,20 @@ export const MOCK_STUDENTS: Student[] = [
 // Real Tashkent Street Road Coordinates (Following actual avenues and street networks)
 export const ROUTE_STREET_PATHS: Record<number, Array<[number, number]>> = {
   1: [
-    [41.3652, 69.2854], // 1-bekat: Yunusobod 11-mavze
-    [41.3621, 69.2858], // Ahmad Donish ko'chasi
-    [41.3575, 69.2848], // Ahmad Donish / Yunusota chorrahasi
-    [41.3532, 69.2835], // Amir Temur shoh ko'chasiga kirish
+    [41.3650, 69.2850], // 1-bekat: Yunusobod 11-mavze (Ali)
+    [41.3610, 69.2855], // Ahmad Donish ko'chasi
+    [41.3530, 69.2835], // Ahmad Donish / Amir Temur
     [41.3480, 69.2810], // 2-bekat: Amir Temur ko'chasi (Madina)
-    [41.3435, 69.2825], // Shahriston metro chorrahasi
+    [41.3435, 69.2820], // Shahriston metro chorrahasi
     [41.3380, 69.2810], // 3-bekat: Bodomzor / Sebzor (Jasur)
-    [41.3330, 69.2802], // Amir Temur shoh ko'chasi
-    [41.3282, 69.2785], // Minor metro bekati chorrahasi
-    [41.3235, 69.2745], // Abdulla Qodiriy ko'chasiga burilish
-    [41.3195, 69.2660], // Abdulla Qodiriy bo'ylab G'afur G'ulom bog'i
-    [41.3160, 69.2560], // Sebzor / Navoiy shoh ko'chasiga burilish
-    [41.3138, 69.2485], // Alisher Navoiy shoh ko'chasi bo'ylab
-    [41.3120, 69.2435], // Xalqlar Do'stligi / Navoiy ko'chasi
-    [41.311082, 69.240562] // Nova Maktab (Maktab darvozasi)
+    [41.3320, 69.2800], // Amir Temur shoh ko'chasi
+    [41.3280, 69.2785], // Minor metro bekati
+    [41.3245, 69.2710], // Abdulla Qodiriy ko'chasi
+    [41.3210, 69.2620], // Abdulla Qodiriy (G'afur G'ulom bog'i)
+    [41.3180, 69.2530], // Zarqaynar ko'chasi (Chorsu)
+    [41.3150, 69.2470], // Navoiy / Samarqand Darvoza
+    [41.3125, 69.2425], // Qoratosh ko'chasi
+    [41.311082, 69.240562] // Nova Maktab darvozasi (SCHOOL_LOCATION)
   ],
   2: [
     [41.2750, 69.2050], // Chilonzor 20-mavze
