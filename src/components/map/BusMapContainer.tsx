@@ -99,7 +99,6 @@ export default function BusMapContainer({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Center in [lng, lat] for MapTiler / MapLibre GL
     const initialCenter: [number, number] = [center[1], center[0]];
 
     const map = new maptilersdk.Map({
@@ -107,7 +106,7 @@ export default function BusMapContainer({
       style: maptilersdk.MapStyle.STREETS,
       center: initialCenter,
       zoom: zoom,
-      pitch: 0, // 2D flat view for clear mobile navigation
+      pitch: 0, // 2D flat view
       bearing: 0,
       touchPitch: false,
       navigationControl: 'bottom-right',
@@ -152,7 +151,7 @@ export default function BusMapContainer({
     }
   }, [center, zoom, followBus]);
 
-  // 4. Draw MapTiler Directions Traffic Polylines (GeoJSON Layers)
+  // 4. Draw MapTiler Directions Traffic Polylines & WebGL Vehicle Position
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -169,10 +168,10 @@ export default function BusMapContainer({
       const seg4 = geoPoints.slice(segLength * 3, geoPoints.length);
 
       const segments = [
-        { id: 'traffic-seg-1', data: seg1, color: '#22c55e' }, // Green (Free Flow)
-        { id: 'traffic-seg-2', data: seg2, color: '#eab308' }, // Yellow (Moderate)
-        { id: 'traffic-seg-3', data: seg3, color: '#ef4444' }, // Red (Traffic Jam)
-        { id: 'traffic-seg-4', data: seg4, color: '#22c55e' }  // Green (Free Flow)
+        { id: 'traffic-seg-1', data: seg1, color: '#22c55e' }, // Green
+        { id: 'traffic-seg-2', data: seg2, color: '#eab308' }, // Yellow
+        { id: 'traffic-seg-3', data: seg3, color: '#ef4444' }, // Red
+        { id: 'traffic-seg-4', data: seg4, color: '#22c55e' }  // Green
       ];
 
       segments.forEach(seg => {
@@ -378,7 +377,7 @@ export default function BusMapContainer({
     return () => clearInterval(interval);
   }, [roadCoordinates]);
 
-  // 8. Render & Animate Vehicle Marker on MapTiler Polyline (100% visible with high z-index)
+  // 8. Render & Animate Vehicle Marker on MapTiler Polyline
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || roadCoordinates.length === 0) return;

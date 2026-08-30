@@ -6,7 +6,7 @@ import BusMap from '../map/BusMap';
 import QRCodeDisplay from '../qr/QRCodeDisplay';
 import { 
   Bus, Users, MapPin, AlertOctagon, CheckCircle2, Plus, 
-  Trash2, Edit, ShieldAlert, Route, Search, Download, Eye, FileText, Activity, AlertCircle, RefreshCw, Sparkles
+  Trash2, Edit, ShieldAlert, Route, Search, Download, Eye, FileText, Activity, AlertCircle, RefreshCw, Sparkles, Navigation, Check
 } from 'lucide-react';
 import { Student, Vehicle, Driver } from '../../types/database';
 
@@ -14,22 +14,35 @@ export default function AdminView() {
   const { 
     students, parents, drivers, vehicles, routes, busLocations, 
     emergencyAlerts, routeAlerts, auditLogs, resolveSOS, addStudent, deleteStudent,
-    resetStudentAddressRequest, updateStudentLocation, optimizeRouteByLocations
+    resetStudentAddressRequest, updateStudentLocation, schoolLocation, updateSchoolLocation
   } = useSystem();
 
-  const [activeTab, setActiveTab] = useState<'map' | 'students' | 'fleet' | 'routes' | 'logs'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'locations' | 'students' | 'fleet' | 'routes' | 'logs'>('map');
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [selectedStudentForQr, setSelectedStudentForQr] = useState<Student | null>(null);
+
+  // Student Location Edit Modal State
+  const [editingStudentLocation, setEditingStudentLocation] = useState<Student | null>(null);
+  const [editStudentAddressText, setEditStudentAddressText] = useState('');
+  const [editStudentLat, setEditStudentLat] = useState(41.5420);
+  const [editStudentLng, setEditStudentLng] = useState(60.6350);
+
+  // School Location Edit Modal State
+  const [isEditingSchool, setIsEditingSchool] = useState(false);
+  const [schoolName, setSchoolName] = useState(schoolLocation?.name || "Nova International AI School");
+  const [schoolAddress, setSchoolAddress] = useState(schoolLocation?.address || "Urganch sh., Sanoatchilar ko'chasi 9-0");
+  const [schoolLat, setSchoolLat] = useState(schoolLocation?.lat || 41.524061);
+  const [schoolLng, setSchoolLng] = useState(schoolLocation?.lng || 60.653853);
 
   // New Student Form State
   const [newFirstName, setNewFirstName] = useState('');
   const [newLastName, setNewLastName] = useState('');
   const [newClassName, setNewClassName] = useState('3-A sinf');
   const [newAddressText, setNewAddressText] = useState('');
-  const [newLat, setNewLat] = useState(41.3500);
-  const [newLng, setNewLng] = useState(69.2900);
+  const [newLat, setNewLat] = useState(41.5420);
+  const [newLng, setNewLng] = useState(60.6350);
 
   const activeEmergency = emergencyAlerts.find(e => e.status === 'active');
 
@@ -38,6 +51,26 @@ export default function AdminView() {
     s.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.class_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleOpenEditStudentLocation = (student: Student) => {
+    setEditingStudentLocation(student);
+    setEditStudentAddressText(student.address?.address_text || '');
+    setEditStudentLat(student.address?.latitude || 41.5420);
+    setEditStudentLng(student.address?.longitude || 60.6350);
+  };
+
+  const handleSaveStudentLocation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudentLocation) return;
+    updateStudentLocation(editingStudentLocation.id, editStudentAddressText, editStudentLat, editStudentLng);
+    setEditingStudentLocation(null);
+  };
+
+  const handleSaveSchoolLocation = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSchoolLocation(schoolName, schoolAddress, schoolLat, schoolLng);
+    setIsEditingSchool(false);
+  };
 
   const handleCreateStudent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +87,7 @@ export default function AdminView() {
       qr_code: `STU-QR-${newFirstName.toUpperCase()}-NEW`,
       photo_url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=200',
       status: 'active'
-    }, newAddressText || 'Toshkent sh., Yunusobod tumani', newLat, newLng);
+    }, newAddressText || "Urganch sh., Al-Xorazmiy shoh ko'chasi", newLat, newLng);
 
     setIsAddStudentOpen(false);
     setNewFirstName('');
@@ -79,7 +112,7 @@ export default function AdminView() {
               Dilshod Karimov (Bosh Administrator)
               <Sparkles className="w-4 h-4 text-amber-400" />
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">3 ta Avtobus • 12 ta O'quvchi • 3 ta Quyi Marshrut</p>
+            <p className="text-xs text-slate-400 mt-0.5">Nova International AI School Urgench • 3 ta Avtobus • {students.length} ta O'quvchi</p>
           </div>
         </div>
 
@@ -108,7 +141,15 @@ export default function AdminView() {
             activeTab === 'map' ? 'bg-blue-600 text-white border-blue-400 shadow-xl shadow-blue-600/25' : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white'
           }`}
         >
-          <MapPin className="w-4 h-4" /> Real-Vaqt Avtopark Xaritasi
+          <MapPin className="w-4 h-4" /> Jonli Xarita
+        </button>
+        <button
+          onClick={() => setActiveTab('locations')}
+          className={`px-5 py-3 rounded-2xl font-bold text-xs transition flex items-center gap-2 shrink-0 border ${
+            activeTab === 'locations' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-400 shadow-xl shadow-blue-600/25' : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white'
+          }`}
+        >
+          <Navigation className="w-4 h-4 text-amber-400" /> 📍 Manzillarni Tahrirlash
         </button>
         <button
           onClick={() => setActiveTab('students')}
@@ -132,7 +173,7 @@ export default function AdminView() {
             activeTab === 'routes' ? 'bg-blue-600 text-white border-blue-400 shadow-xl shadow-blue-600/25' : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white'
           }`}
         >
-          <Route className="w-4 h-4" /> Marshrutlar Optimizatsiyasi
+          <Route className="w-4 h-4" /> Marshrutlar
         </button>
         <button
           onClick={() => setActiveTab('logs')}
@@ -140,7 +181,7 @@ export default function AdminView() {
             activeTab === 'logs' ? 'bg-blue-600 text-white border-blue-400 shadow-xl shadow-blue-600/25' : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white'
           }`}
         >
-          <Activity className="w-4 h-4" /> Audit & Harakat Loglari
+          <Activity className="w-4 h-4" /> Audit Loglari
         </button>
       </div>
 
@@ -152,35 +193,42 @@ export default function AdminView() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-extrabold text-white text-base">
-                    Barcha Transportlar va Marshrutlar Xaritasi
+                    Urganch Shahri Bo'ylab Jonli Avtopark Xaritasi
                   </h3>
-                  <p className="text-xs text-slate-400">Real-vaqtda barcha 3 ta avtobus va o'quvchilar uylari</p>
+                  <p className="text-xs text-slate-400">MapTiler 2D Navigatr • 01 777 NVA harakatda</p>
                 </div>
+                <a
+                  href="/map"
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5"
+                >
+                  <Navigation className="w-3.5 h-3.5" /> Keng Ekranda Ochish
+                </a>
               </div>
 
-              {/* Leaflet Map with all 3 buses */}
+              {/* Map Container */}
               <BusMap 
                 buses={vehicles.map(v => ({
                   vehicle: v,
-                  lat: busLocations[v.id]?.lat || 41.3300,
-                  lng: busLocations[v.id]?.lng || 69.2700,
-                  speed: busLocations[v.id]?.speed || 40
+                  lat: busLocations[v.id]?.lat || 41.5620,
+                  lng: busLocations[v.id]?.lng || 60.6120,
+                  speed: busLocations[v.id]?.speed || 42,
+                  heading: busLocations[v.id]?.heading || 140
                 }))}
                 students={students}
                 emergencyAlerts={emergencyAlerts}
                 routeAlerts={routeAlerts}
                 onMapClick={(lat, lng) => {
-                  setNewLat(parseFloat(lat.toFixed(4)));
-                  setNewLng(parseFloat(lng.toFixed(4)));
+                  setNewLat(parseFloat(lat.toFixed(6)));
+                  setNewLng(parseFloat(lng.toFixed(6)));
                   setIsAddStudentOpen(true);
                 }}
-                zoom={12}
+                zoom={13}
                 height="500px"
               />
               
               <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-slate-300 flex items-center justify-between">
                 <span>📍 Tanlangan Koordinata: <strong className="text-blue-400 font-mono">{newLat}, {newLng}</strong></span>
-                <span className="text-[11px] font-semibold text-blue-400">💡 Xaritaning istalgan joyiga bosib yangi manzil biriktiring</span>
+                <span className="text-[11px] font-semibold text-blue-400">💡 Xaritaga bosib yangi manzil biriktirishingiz mumkin</span>
               </div>
             </div>
           </div>
@@ -214,8 +262,8 @@ export default function AdminView() {
                       
                       <div className="text-xs text-slate-400 space-y-1">
                         <p><strong>Haydovchi:</strong> {driverObj?.user?.first_name} {driverObj?.user?.last_name}</p>
-                        <p><strong>Hozirgi Tezlik:</strong> {bLoc?.speed || 0} km/h</p>
-                        <p><strong>Holati:</strong> {bLoc?.isSimulating ? '🟢 Harakatda (Live GPS)' : '🟡 Pausada'}</p>
+                        <p><strong>Hozirgi Tezlik:</strong> {bLoc?.speed || 42} km/h</p>
+                        <p><strong>Holati:</strong> {bLoc?.isSimulating ? '🟢 Harakatda (Live GPS)' : '🟢 Marshrutda'}</p>
                       </div>
                     </div>
                   );
@@ -226,7 +274,112 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* TAB 2: Student Management & Permanent QR Badges */}
+      {/* TAB 2: MANZILLARNI TAHRIRLASH (Locations Management) */}
+      {activeTab === 'locations' && (
+        <div className="space-y-6">
+          
+          {/* School Location Card */}
+          <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-white text-lg">Maktab Asosiy Joylashuvi (School Location)</h3>
+                  <p className="text-xs text-slate-400">Barcha avtobuslar harakati yakunlanadigan markaziy bino</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditingSchool(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow flex items-center gap-1.5"
+              >
+                <Edit className="w-3.5 h-3.5" /> Maktab Joylashuvini Tahrirlash
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Maktab Nomi</span>
+                <p className="font-bold text-white text-sm mt-1">{schoolLocation.name}</p>
+              </div>
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 sm:col-span-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Manzil & Koordinatalar</span>
+                <p className="font-bold text-white text-sm mt-1">{schoolLocation.address}</p>
+                <p className="text-xs text-blue-400 font-mono mt-0.5">Lat: {schoolLocation.lat} • Lng: {schoolLocation.lng}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Student Locations Table */}
+          <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="font-black text-white text-lg">O'quvchilar Uylari va Bekatlar Koordinatalari</h3>
+                <p className="text-xs text-slate-400">Admin xaritada yoki qo'lda istalgan o'quvchi manzilini o'zgartirishi mumkin</p>
+              </div>
+              <button
+                onClick={() => setIsAddStudentOpen(true)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> Yangi Manzil Qo'shish
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 font-bold uppercase">
+                    <th className="p-3.5">Bekat # / O'quvchi</th>
+                    <th className="p-3.5">Sinfi</th>
+                    <th className="p-3.5">Uy Manzili</th>
+                    <th className="p-3.5">GPS Koordinatalari</th>
+                    <th className="p-3.5 text-right">Amal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {students.map((st, idx) => (
+                    <tr key={st.id} className="hover:bg-slate-800/40 transition">
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-full bg-blue-600/30 text-blue-400 font-bold text-xs flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <img src={st.photo_url} alt={st.first_name} className="w-9 h-9 rounded-2xl object-cover border border-slate-700" />
+                          <div>
+                            <p className="font-bold text-white text-sm">{st.first_name} {st.last_name}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{st.student_code}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-semibold text-indigo-400">{st.class_name}</td>
+                      <td className="p-3.5 max-w-xs">
+                        <p className="text-white font-medium text-xs">{st.address?.address_text || "Belgilanmagan"}</p>
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-300">
+                        <span className="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-blue-400">
+                          {st.address?.latitude?.toFixed(6) || 41.5420}, {st.address?.longitude?.toFixed(6) || 60.6350}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <button
+                          onClick={() => handleOpenEditStudentLocation(st)}
+                          className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg transition flex items-center gap-1.5 ml-auto active:scale-95"
+                        >
+                          <Edit className="w-3.5 h-3.5" /> Manzilni Tahrirlash
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 3: Student Management & QR Badges */}
       {activeTab === 'students' && (
         <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -292,15 +445,12 @@ export default function AdminView() {
                     <td className="p-3.5 max-w-xs">
                       <p className="text-slate-200 font-medium text-xs line-clamp-1">{st.address?.address_text}</p>
                       <div className="flex items-center gap-1.5 mt-1">
-                        {st.address?.is_confirmed ? (
-                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-500/30">
-                            <CheckCircle2 className="w-3 h-3" /> Ota-ona Tasdiqlagan
-                          </span>
-                        ) : (
-                          <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-500/30">
-                            <AlertCircle className="w-3 h-3" /> Tasdiqlanmagan
-                          </span>
-                        )}
+                        <button
+                          onClick={() => handleOpenEditStudentLocation(st)}
+                          className="text-[10px] text-blue-400 hover:text-blue-300 font-bold underline flex items-center gap-1"
+                        >
+                          <Edit className="w-3 h-3" /> Manzilni o'zgartirish
+                        </button>
                       </div>
                     </td>
                     <td className="p-3.5 text-center">
@@ -313,16 +463,6 @@ export default function AdminView() {
                     </td>
                     <td className="p-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button 
-                          onClick={() => {
-                            resetStudentAddressRequest(st.id);
-                            alert(`${st.first_name} ning ota-onasiga manzilni qayta belgilash so'rovi yuborildi!`);
-                          }}
-                          title="Ota-ona xato qilgan bo'lsa, manzilni qayta belgilash so'rovini yuborish"
-                          className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> Qayta Belgilash
-                        </button>
                         <button 
                           onClick={() => deleteStudent(st.id)}
                           className="px-3 py-1.5 text-red-400 hover:bg-red-500/20 border border-red-500/30 rounded-xl text-xs font-bold transition"
@@ -339,7 +479,7 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* TAB 3: Fleet & Drivers */}
+      {/* TAB 4: Fleet & Drivers */}
       {activeTab === 'fleet' && (
         <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6">
           <h3 className="font-extrabold text-white text-lg border-b border-slate-800 pb-3">
@@ -348,101 +488,27 @@ export default function AdminView() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             {vehicles.map(v => {
-              const drv = drivers.find(d => d.id === v.id);
+              const bLoc = busLocations[v.id];
+              const driverObj = drivers.find(d => d.id === v.id);
 
               return (
-                <div key={v.id} className="p-5 bg-slate-950/60 border border-slate-800 rounded-3xl space-y-4 shadow-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
-                      <Bus className="w-6 h-6" />
+                <div key={v.id} className="p-5 bg-slate-950/60 border border-slate-800 rounded-3xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold">
+                      <Bus className="w-5 h-5" />
                     </div>
-                    <div>
-                      <h4 className="font-bold text-white text-base">{v.vehicle_name}</h4>
-                      <p className="text-xs font-mono font-bold text-emerald-400">{v.plate_number}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-slate-300 border-t border-slate-800 pt-3">
-                    <p><strong>Haydovchi:</strong> {drv?.user?.first_name} {drv?.user?.last_name}</p>
-                    <p><strong>Telefon:</strong> {drv?.user?.phone}</p>
-                    <p><strong>Sig'imi:</strong> {v.capacity} o'quvchi</p>
-                    <p><strong>GPS Qurilma:</strong> {v.gps_device_id}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: Route Optimization by Geographic Locations */}
-      {activeTab === 'routes' && (
-        <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-            <div>
-              <h3 className="font-extrabold text-white text-lg flex items-center gap-2">
-                <Route className="w-5 h-5 text-blue-400" />
-                Lokatsiyalar Bo'yicha Marshrutlar Optimizatsiyasi
-              </h3>
-              <p className="text-xs text-slate-400">O'quvchilarning real GPS manzillari asosida eng qisqa va qulay pikap ketma-ketligi</p>
-            </div>
-
-            <button
-              onClick={() => {
-                optimizeRouteByLocations(1);
-                alert("Marshrut o'quvchilarning real GPS koordinatalari bo'yicha avtomatik qayta optimallashtirildi!");
-              }}
-              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold text-xs shadow-xl flex items-center gap-2 border border-white/10 transition active:scale-95"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              Lokatsiyalar Bo'yicha Qayta Optimallashtirish
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {routes.map(r => {
-              const assignedStudents = students.slice(0, 3);
-
-              return (
-                <div key={r.id} className="p-5 bg-slate-950/60 border border-slate-800 rounded-3xl space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <div>
-                      <h4 className="font-bold text-base text-blue-400">{r.name}</h4>
-                      <p className="text-xs text-slate-400">{r.description}</p>
-                    </div>
-                    <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> GPS Lokatsiyalar Bo'yicha Tuzilgan
+                    <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                      {v.plate_number}
                     </span>
                   </div>
-
-                  {/* Turn by turn stops ordered by distance towards school */}
-                  <div className="space-y-2.5">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Optimal Pikap Ketma-Ketligi ({assignedStudents.length} ta bekat):
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {assignedStudents.map((st, idx) => (
-                        <div key={st.id} className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow">
-                            {idx + 1}
-                          </div>
-                          <img src={st.photo_url} alt={st.first_name} className="w-10 h-10 rounded-xl object-cover border border-slate-700 shrink-0" />
-                          <div>
-                            <p className="font-bold text-white text-xs">{idx + 1}-bekat: {st.first_name} {st.last_name}</p>
-                            <p className="text-[10px] text-slate-400 line-clamp-1">{st.address?.address_text}</p>
-                            <span className="text-[9px] font-mono text-blue-400 font-bold">
-                              {st.address?.latitude.toFixed(4)}, {st.address?.longitude.toFixed(4)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div>
+                    <h4 className="font-bold text-white text-base">{v.vehicle_name}</h4>
+                    <p className="text-xs text-slate-400">{v.model} • {v.capacity} o'rinli</p>
                   </div>
-
-                  <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-xs text-slate-300 flex items-center justify-between flex-wrap gap-2">
-                    <span>🏁 Yakuniy manzil: <strong>Nova Maktab (Navoiy shoh ko'chasi)</strong></span>
-                    <span className="text-emerald-400 font-bold">Yo'l vaqti: ~25 daqiqa • Masofa: ~12.4 km</span>
+                  <div className="border-t border-slate-800 pt-3 text-xs text-slate-300 space-y-1.5">
+                    <p><strong>Haydovchi:</strong> {driverObj?.user?.first_name} {driverObj?.user?.last_name}</p>
+                    <p><strong>Telefon:</strong> {driverObj?.user?.phone}</p>
+                    <p><strong>Hozirgi Tezlik:</strong> <span className="text-emerald-400 font-bold">{bLoc?.speed || 42} km/h</span></p>
                   </div>
                 </div>
               );
@@ -451,24 +517,45 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* TAB 5: Audit Logs */}
-      {activeTab === 'logs' && (
-        <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-4">
+      {/* TAB 5: Routes */}
+      {activeTab === 'routes' && (
+        <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6">
           <h3 className="font-extrabold text-white text-lg border-b border-slate-800 pb-3">
-            Tizimdagi Audit Loglar & Amallar Tarixi
+            Quyi Marshrutlar & Yo'nalishlar
           </h3>
-
-          <div className="divide-y divide-slate-800 text-xs">
-            {auditLogs.map(log => (
-              <div key={log.id} className="py-3 flex items-start justify-between gap-4">
+          <div className="space-y-4">
+            {routes.map(r => (
+              <div key={r.id} className="p-5 bg-slate-950/60 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                  <span className="font-mono text-[10px] bg-slate-800 px-2.5 py-0.5 rounded font-bold text-slate-300 border border-slate-700">
-                    {log.action}
-                  </span>
-                  <p className="text-slate-300 mt-1">{log.new_data}</p>
+                  <h4 className="font-bold text-white text-base">{r.name}</h4>
+                  <p className="text-xs text-slate-400 mt-1">{r.description || "Urganch shahri bo'ylab transport yo'nalishi"}</p>
                 </div>
-                <span className="text-slate-500 text-[10px] shrink-0 font-mono">
-                  {new Date(log.created_at).toLocaleTimeString()}
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-xs border border-emerald-500/30">
+                    MapTiler Optimal
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: Audit Logs */}
+      {activeTab === 'logs' && (
+        <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-6">
+          <h3 className="font-extrabold text-white text-lg border-b border-slate-800 pb-3">
+            Tizim Harakat Loglari (Audit)
+          </h3>
+          <div className="space-y-2">
+            {auditLogs.map(log => (
+              <div key={log.id} className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-xs flex items-center justify-between gap-4">
+                <div>
+                  <span className="font-bold text-indigo-400">{log.action}</span>
+                  <p className="text-slate-400 text-[11px] mt-0.5 font-mono">{log.new_data}</p>
+                </div>
+                <span className="text-[10px] text-slate-500 shrink-0">
+                  {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             ))}
@@ -476,17 +563,199 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* Add Student Modal (Apple Glass Modal) */}
+      {/* MODAL: EDIT STUDENT LOCATION */}
+      {editingStudentLocation && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-black text-lg text-white flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-amber-400" />
+                  O'quvchi Manzilini Tahrirlash
+                </h3>
+                <p className="text-xs text-slate-400">{editingStudentLocation.first_name} {editingStudentLocation.last_name} ({editingStudentLocation.class_name})</p>
+              </div>
+              <button 
+                onClick={() => setEditingStudentLocation(null)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStudentLocation} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300">Uy Manzili (Ko'cha / Uy raqami)</label>
+                <input 
+                  type="text" 
+                  required
+                  value={editStudentAddressText} 
+                  onChange={(e) => setEditStudentAddressText(e.target.value)} 
+                  placeholder="Masalan: Urganch sh., Al-Xorazmiy shoh ko'chasi 14-uy"
+                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
+                />
+              </div>
+
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl space-y-3">
+                <p className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                  <Navigation className="w-4 h-4 text-blue-400" />
+                  GPS Koordinatalari (MapTiler yo'nalishi uchun):
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-semibold">Latitude (Kenglik)</label>
+                    <input 
+                      type="number" 
+                      step="0.000001"
+                      required
+                      value={editStudentLat} 
+                      onChange={(e) => setEditStudentLat(parseFloat(e.target.value))} 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-semibold">Longitude (Uzunlik)</label>
+                    <input 
+                      type="number" 
+                      step="0.000001"
+                      required
+                      value={editStudentLng} 
+                      onChange={(e) => setEditStudentLng(parseFloat(e.target.value))} 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingStudentLocation(null)} 
+                  className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700"
+                >
+                  Bekor qilish
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-lg flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" /> Saqlash va Marshrutni Yangilash
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT SCHOOL LOCATION */}
+      {isEditingSchool && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-black text-lg text-white flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-blue-400" />
+                  Maktab Joylashuvini Tahrirlash
+                </h3>
+                <p className="text-xs text-slate-400">Markaziy maktab binosi manzili va koordinatalari</p>
+              </div>
+              <button 
+                onClick={() => setIsEditingSchool(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSchoolLocation} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300">Maktab Nomi</label>
+                <input 
+                  type="text" 
+                  required
+                  value={schoolName} 
+                  onChange={(e) => setSchoolName(e.target.value)} 
+                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300">Maktab To'liq Manzili</label>
+                <input 
+                  type="text" 
+                  required
+                  value={schoolAddress} 
+                  onChange={(e) => setSchoolAddress(e.target.value)} 
+                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
+                />
+              </div>
+
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl space-y-3">
+                <p className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                  <Navigation className="w-4 h-4 text-blue-400" />
+                  Maktab GPS Koordinatalari:
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-semibold">Latitude</label>
+                    <input 
+                      type="number" 
+                      step="0.000001"
+                      required
+                      value={schoolLat} 
+                      onChange={(e) => setSchoolLat(parseFloat(e.target.value))} 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-semibold">Longitude</label>
+                    <input 
+                      type="number" 
+                      step="0.000001"
+                      required
+                      value={schoolLng} 
+                      onChange={(e) => setSchoolLng(parseFloat(e.target.value))} 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsEditingSchool(false)} 
+                  className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700"
+                >
+                  Bekor qilish
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-lg flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" /> Maktabni Saqlash
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD STUDENT */}
       {isAddStudentOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="font-extrabold text-lg text-white">Yangi O'quvchi Qo'shish</h3>
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-white">Yangi O'quvchi Qo'shish</h3>
+              <button onClick={() => setIsAddStudentOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
             <form onSubmit={handleCreateStudent} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-300">Ismi</label>
                 <input 
                   type="text" 
-                  required
+                  required 
                   value={newFirstName} 
                   onChange={(e) => setNewFirstName(e.target.value)} 
                   className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
@@ -496,7 +765,7 @@ export default function AdminView() {
                 <label className="text-xs font-bold text-slate-300">Familiyasi</label>
                 <input 
                   type="text" 
-                  required
+                  required 
                   value={newLastName} 
                   onChange={(e) => setNewLastName(e.target.value)} 
                   className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
@@ -512,20 +781,20 @@ export default function AdminView() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-300">Uy Manzili (Nomi)</label>
+                <label className="text-xs font-bold text-slate-300">Uy Manzili</label>
                 <input 
                   type="text" 
                   value={newAddressText} 
                   onChange={(e) => setNewAddressText(e.target.value)} 
                   className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 mt-1"
-                  placeholder="Toshkent sh., Yunusobod..."
+                  placeholder="Urganch sh., Al-Xorazmiy..."
                 />
               </div>
 
               <div className="p-3 bg-blue-500/15 border border-blue-500/30 rounded-2xl space-y-2">
                 <p className="text-[11px] font-bold text-blue-300 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-blue-400" />
-                  Xaritalash / Koordinatalarni belgilash:
+                  GPS Koordinatalari:
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
@@ -549,7 +818,6 @@ export default function AdminView() {
                     />
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-400">Yoki xaritaning istalgan joyiga bosib koordinatani tanlang</p>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -582,10 +850,6 @@ export default function AdminView() {
 
             <p className="text-xs font-mono font-bold text-slate-300 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
               QR kodi: {selectedStudentForQr.qr_code}
-            </p>
-
-            <p className="text-[10px] text-slate-400">
-              📌 Ushbu QR kod ushbu o'quvchi uchun alohida va doimiy bo'lib, o'quv yili davomida hech qachon o'zgarmaydi.
             </p>
 
             <div className="flex items-center gap-2 pt-2">

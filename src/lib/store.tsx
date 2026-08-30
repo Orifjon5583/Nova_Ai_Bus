@@ -61,7 +61,9 @@ interface SystemContextType {
   confirmStudentAddress: (studentId: number, addressText: string, lat: number, lng: number, pickupNote?: string) => void;
   resetStudentAddressRequest: (studentId: number) => void;
   
-  // Location Route Optimization
+  // School Location
+  schoolLocation: { name: string; address: string; lat: number; lng: number };
+  updateSchoolLocation: (name: string, address: string, lat: number, lng: number) => void;
   optimizeRouteByLocations: (routeId: number) => void;
 
   // Admin actions
@@ -91,6 +93,27 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [emergencyAlerts, setEmergencyAlerts] = useState<EmergencyAlert[]>(MOCK_EMERGENCY_ALERTS);
   const [routeAlerts, setRouteAlerts] = useState<RouteAlert[]>(MOCK_ROUTE_ALERTS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(MOCK_AUDIT_LOGS);
+
+  const [schoolLocation, setSchoolLocation] = useState<{
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+  }>(SCHOOL_LOCATION);
+
+  const updateSchoolLocation = (name: string, address: string, lat: number, lng: number) => {
+    setSchoolLocation({ name, address, lat, lng });
+    const newLog: AuditLog = {
+      id: Date.now(),
+      user_id: currentUser?.id || 1,
+      action: 'SCHOOL_LOCATION_UPDATED',
+      table_name: 'schools',
+      record_id: 1,
+      new_data: JSON.stringify({ name, address, lat, lng }),
+      created_at: new Date().toISOString()
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
 
   // Sync role whenever currentUser changes
   useEffect(() => {
@@ -122,7 +145,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentUser(null);
   };
 
-  // Initial bus GPS positions
+  // Initial bus GPS positions (Urgench, Khorezm)
   const [busLocations, setBusLocations] = useState<Record<number, LiveBusState>>({
     1: {
       vehicleId: 1,
@@ -135,18 +158,18 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     },
     2: {
       vehicleId: 2,
-      lat: 41.2750,
-      lng: 69.2050,
-      speed: 0,
+      lat: 41.5380,
+      lng: 60.6280,
+      speed: 35,
       heading: 90,
       routeId: 2,
       isSimulating: false
     },
     3: {
       vehicleId: 3,
-      lat: 41.3350,
-      lng: 69.3450,
-      speed: 0,
+      lat: 41.5150,
+      lng: 60.6650,
+      speed: 38,
       heading: 270,
       routeId: 3,
       isSimulating: false
@@ -678,6 +701,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       confirmStudentAddress,
       resetStudentAddressRequest,
       optimizeRouteByLocations,
+      schoolLocation,
+      updateSchoolLocation,
       addStudent,
       updateStudent,
       updateStudentLocation,
