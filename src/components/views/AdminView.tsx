@@ -6,7 +6,7 @@ import BusMap from '../map/BusMap';
 import QRCodeDisplay from '../qr/QRCodeDisplay';
 import { 
   Bus, Users, MapPin, AlertOctagon, CheckCircle2, Plus, 
-  Trash2, Edit, ShieldAlert, Route, Search, Download, Eye, FileText, Activity, AlertCircle, RefreshCw, Sparkles, Navigation, Check
+  Trash2, Edit, ShieldAlert, Route, Search, Download, Eye, FileText, Activity, AlertCircle, RefreshCw, Sparkles, Navigation, Check, MousePointerClick, Crosshair
 } from 'lucide-react';
 import { Student, Vehicle, Driver } from '../../types/database';
 
@@ -22,6 +22,10 @@ export default function AdminView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [selectedStudentForQr, setSelectedStudentForQr] = useState<Student | null>(null);
+
+  // Map Click Quick Action Popover State
+  const [clickedMapLocation, setClickedMapLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedStudentForMapAssign, setSelectedStudentForMapAssign] = useState<number>(students[0]?.id || 1);
 
   // Student Location Edit Modal State
   const [editingStudentLocation, setEditingStudentLocation] = useState<Student | null>(null);
@@ -51,6 +55,42 @@ export default function AdminView() {
     s.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.class_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Map Click Handler: Opens Quick Assignment Modal
+  const handleMapClick = (lat: number, lng: number) => {
+    const cleanLat = parseFloat(lat.toFixed(6));
+    const cleanLng = parseFloat(lng.toFixed(6));
+    setNewLat(cleanLat);
+    setNewLng(cleanLng);
+    setClickedMapLocation({ lat: cleanLat, lng: cleanLng });
+  };
+
+  const handleAssignClickedLocationToSchool = () => {
+    if (!clickedMapLocation) return;
+    updateSchoolLocation(
+      schoolLocation.name,
+      `Urganch sh., Tanlangan nuqta (${clickedMapLocation.lat}, ${clickedMapLocation.lng})`,
+      clickedMapLocation.lat,
+      clickedMapLocation.lng
+    );
+    setClickedMapLocation(null);
+    alert("🏫 Maktab rasmiy joylashuvi xaritadagi yangi nuqtaga muvaffaqiyatli o'zgartirildi!");
+  };
+
+  const handleAssignClickedLocationToStudent = () => {
+    if (!clickedMapLocation) return;
+    const targetStudent = students.find(s => s.id === selectedStudentForMapAssign);
+    if (targetStudent) {
+      updateStudentLocation(
+        targetStudent.id,
+        `Urganch sh., Bekat #${targetStudent.id} (${clickedMapLocation.lat}, ${clickedMapLocation.lng})`,
+        clickedMapLocation.lat,
+        clickedMapLocation.lng
+      );
+      setClickedMapLocation(null);
+      alert(`📍 ${targetStudent.first_name} ${targetStudent.last_name} ning bekati yangilandi!`);
+    }
+  };
 
   const handleOpenEditStudentLocation = (student: Student) => {
     setEditingStudentLocation(student);
@@ -141,7 +181,7 @@ export default function AdminView() {
             activeTab === 'map' ? 'bg-blue-600 text-white border-blue-400 shadow-xl shadow-blue-600/25' : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white'
           }`}
         >
-          <MapPin className="w-4 h-4" /> Jonli Xarita
+          <MapPin className="w-4 h-4" /> Jonli Xarita & Interaktiv Tanlash
         </button>
         <button
           onClick={() => setActiveTab('locations')}
@@ -185,21 +225,22 @@ export default function AdminView() {
         </button>
       </div>
 
-      {/* TAB 1: Global Fleet Map */}
+      {/* TAB 1: Global Fleet Map with Interactive Pin Click */}
       {activeTab === 'map' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-5 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-extrabold text-white text-base">
-                    Urganch Shahri Bo'ylab Jonli Avtopark Xaritasi
+                  <h3 className="font-extrabold text-white text-base flex items-center gap-2">
+                    <Crosshair className="w-4 h-4 text-emerald-400" />
+                    Urganch Shahri Bo'ylab Jonli Xarita & Interaktiv Joylashuv Tanlash
                   </h3>
-                  <p className="text-xs text-slate-400">MapTiler 2D Navigatr • 01 777 NVA harakatda</p>
+                  <p className="text-xs text-slate-400">Xaritaning istalgan joyiga bosib maktab yoki o'quvchi bekatini o'zgartiring</p>
                 </div>
                 <a
                   href="/map"
-                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5 shrink-0"
                 >
                   <Navigation className="w-3.5 h-3.5" /> Keng Ekranda Ochish
                 </a>
@@ -217,18 +258,24 @@ export default function AdminView() {
                 students={students}
                 emergencyAlerts={emergencyAlerts}
                 routeAlerts={routeAlerts}
-                onMapClick={(lat, lng) => {
-                  setNewLat(parseFloat(lat.toFixed(6)));
-                  setNewLng(parseFloat(lng.toFixed(6)));
-                  setIsAddStudentOpen(true);
-                }}
+                onMapClick={handleMapClick}
                 zoom={13}
                 height="500px"
               />
               
-              <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-slate-300 flex items-center justify-between">
-                <span>📍 Tanlangan Koordinata: <strong className="text-blue-400 font-mono">{newLat}, {newLng}</strong></span>
-                <span className="text-[11px] font-semibold text-blue-400">💡 Xaritaga bosib yangi manzil biriktirishingiz mumkin</span>
+              <div className="p-4 bg-gradient-to-r from-blue-950/60 via-indigo-950/60 to-slate-950/80 border border-blue-500/30 rounded-2xl text-xs text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600/30 text-blue-400 flex items-center justify-center font-bold">
+                    <MousePointerClick className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-blue-300 block">Oxirgi Tanlangan Koordinata:</span>
+                    <strong className="text-white font-mono text-xs">{newLat}, {newLng}</strong>
+                  </div>
+                </div>
+                <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+                  💡 Xaritada istalgan ko'chani bosing va 1-klikda manzil qilib biriktiring
+                </span>
               </div>
             </div>
           </div>
@@ -563,7 +610,101 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* MODAL: EDIT STUDENT LOCATION */}
+      {/* MODAL 1: QUICK MAP CLICK ACTION MODAL */}
+      {clickedMapLocation && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-indigo-500/40 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600/30 text-indigo-400 flex items-center justify-center font-bold">
+                  <Crosshair className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-white">Xaritada Nuqta Tanlandi</h3>
+                  <p className="text-[11px] text-blue-400 font-mono">Lat: {clickedMapLocation.lat} • Lng: {clickedMapLocation.lng}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setClickedMapLocation(null)}
+                className="w-7 h-7 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">Ushbu tanlangan nuqtani qaysi ob'ektga biriktirmoqchisiz?</p>
+
+            <div className="space-y-3">
+              {/* Option A: Assign to School */}
+              <button
+                onClick={handleAssignClickedLocationToSchool}
+                className="w-full p-3.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-200 rounded-2xl text-left transition flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    🏫
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-white">Maktab Joylashuvi Qilish</h5>
+                    <p className="text-[10px] text-slate-400">Nova International AI School</p>
+                  </div>
+                </div>
+                <Check className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition" />
+              </button>
+
+              {/* Option B: Assign to Student Stop */}
+              <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-2">
+                <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-indigo-400" />
+                  O'quvchi Bekatiga Biriktirish:
+                </label>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedStudentForMapAssign}
+                    onChange={(e) => setSelectedStudentForMapAssign(parseInt(e.target.value))}
+                    className="flex-1 p-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white"
+                  >
+                    {students.map(s => (
+                      <option key={s.id} value={s.id}>{s.first_name} {s.last_name} ({s.class_name})</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleAssignClickedLocationToStudent}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shrink-0"
+                  >
+                    Biriktirish
+                  </button>
+                </div>
+              </div>
+
+              {/* Option C: Add New Student with this point */}
+              <button
+                onClick={() => {
+                  setClickedMapLocation(null);
+                  setIsAddStudentOpen(true);
+                }}
+                className="w-full p-3 bg-slate-800/60 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-2xl text-left transition flex items-center justify-between text-xs font-bold"
+              >
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-emerald-400" />
+                  <span>Yangi o'quvchi qo'shish (ushbu koordinatada)</span>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setClickedMapLocation(null)}
+                className="px-4 py-2 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-bold"
+              >
+                Yopish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: EDIT STUDENT LOCATION */}
       {editingStudentLocation && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
@@ -597,10 +738,12 @@ export default function AdminView() {
               </div>
 
               <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl space-y-3">
-                <p className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
-                  <Navigation className="w-4 h-4 text-blue-400" />
-                  GPS Koordinatalari (MapTiler yo'nalishi uchun):
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                    <Navigation className="w-4 h-4 text-blue-400" />
+                    GPS Koordinatalari (MapTiler yo'nalishi uchun):
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="text-[10px] text-slate-400 font-semibold">Latitude (Kenglik)</label>
@@ -647,7 +790,7 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* MODAL: EDIT SCHOOL LOCATION */}
+      {/* MODAL 3: EDIT SCHOOL LOCATION */}
       {isEditingSchool && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
@@ -741,7 +884,7 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* MODAL: ADD STUDENT */}
+      {/* MODAL 4: ADD STUDENT */}
       {isAddStudentOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
@@ -829,7 +972,7 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* Permanent Student QR Display Modal */}
+      {/* MODAL 5: Permanent Student QR Display Modal */}
       {selectedStudentForQr && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900/90 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
@@ -850,6 +993,10 @@ export default function AdminView() {
 
             <p className="text-xs font-mono font-bold text-slate-300 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
               QR kodi: {selectedStudentForQr.qr_code}
+            </p>
+
+            <p className="text-[10px] text-slate-400">
+              📌 Ushbu QR kod ushbu o'quvchi uchun alohida va doimiy bo'lib, o'quv yili davomida hech qachon o'zgarmaydi.
             </p>
 
             <div className="flex items-center gap-2 pt-2">
