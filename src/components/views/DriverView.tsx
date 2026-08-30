@@ -8,16 +8,69 @@ import BusMap from '../map/BusMap';
 import { 
   Bus, QrCode, Camera, AlertOctagon, CheckCircle2, Phone, MapPin, 
   Navigation, UserCheck, ShieldAlert, Sparkles, RefreshCw, Sun, Moon, Ban, AlertTriangle, Smartphone, Compass,
-  CornerUpRight, CornerUpLeft, ArrowUp, Volume2, VolumeX, ChevronDown, ChevronUp, Route, Gauge
+  CornerUpRight, CornerUpLeft, ArrowUp, Volume2, VolumeX, ChevronDown, ChevronUp, Route, Gauge, Play, Check, ArrowRight, Flag, Warehouse, Home
 } from 'lucide-react';
-import { TripType } from '../../types/database';
-import { ROUTE_NAVIGATION_STEPS, NavigationManeuver } from '../../lib/mock-data';
+import { Student, TripType } from '../../types/database';
+import { SCHOOL_LOCATION } from '../../lib/mock-data';
+
+// Preset Start Locations in Urgench
+const DRIVER_START_LOCATIONS = [
+  { id: 'garage', name: '🏢 Urganch Avtopark Garaji', lat: 41.5510, lng: 60.6250, desc: "Shovot kanali bo'yi, Urganch" },
+  { id: 'home', name: '🏠 Haydovchi Uyi (Jasur Raximov)', lat: 41.5620, lng: 60.6120, desc: "Al-Xorazmiy shoh ko'chasi 14-uy" },
+  { id: 'school', name: '🏫 Nova International AI School', lat: SCHOOL_LOCATION.lat, lng: SCHOOL_LOCATION.lng, desc: SCHOOL_LOCATION.address }
+];
+
+// Calculate straight-line distance in km for Nearest-Neighbor TSP
+function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// Automatically sort students into optimal nearest-neighbor pickup sequence from start to school
+function calculateOptimalPickupSequence(
+  startLat: number, 
+  startLng: number, 
+  studentsList: Student[], 
+  schoolLat: number, 
+  schoolLng: number
+): Student[] {
+  const remaining = [...studentsList.filter(s => s.address && s.status === 'active')];
+  const ordered: Student[] = [];
+  let currentLat = startLat;
+  let currentLng = startLng;
+
+  while (remaining.length > 0) {
+    let nearestIdx = 0;
+    let minDistance = Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const st = remaining[i];
+      const dist = getDistanceKm(currentLat, currentLng, st.address!.latitude, st.address!.longitude);
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearestIdx = i;
+      }
+    }
+
+    const nearestStudent = remaining.splice(nearestIdx, 1)[0];
+    ordered.push(nearestStudent);
+    currentLat = nearestStudent.address!.latitude;
+    currentLng = nearestStudent.address!.longitude;
+  }
+
+  return ordered;
+}
 
 export default function DriverView() {
   const { 
     currentUser, drivers, students, tripStudents, busLocations, vehicles, confirmStudentPickup, 
-    confirmSchoolArrival, startEveningTrip, confirmHomeArrival, triggerSOS, 
-    toggleBusSimulation, updateBusLocationManually
+    confirmSchoolArrival, triggerSOS, toggleBusSimulation, updateBusLocationManually, schoolLocation
   } = useSystem();
 
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -26,491 +79,352 @@ export default function DriverView() {
   const [isRealGpsActive, setIsRealGpsActive] = useState(false);
   const [gpsStatusMessage, setGpsStatusMessage] = useState<string>('');
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
-  const [showAllTurns, setShowAllTurns] = useState(false);
+
+  // Driver Trip State
+  const [selectedStartLocationId, setSelectedStartLocationId] = useState<string>('home');
+  const [tripStage, setTripStage] = useState<'idle' | 'in_progress' | 'completed'>('idle');
+  const [pickupSequence, setPickupSequence] = useState<Student[]>([]);
+  const [currentPickupIndex, setCurrentPickupIndex] = useState<number>(0);
+  const [activeScannedStudent, setActiveScannedStudent] = useState<Student | null>(null);
 
   const currentDriverObj = drivers.find(d => d.user_id === currentUser?.id) || drivers[0];
   const vehicle = vehicles.find(v => v.id === currentDriverObj.id) || vehicles[0];
   const busLoc = busLocations[vehicle.id] || busLocations[1];
 
-  // Current route's students (Yunusobod Route: Ali, Madina, Jasur)
-  const routeStudents = students.slice(0, 3);
-  const navSteps = ROUTE_NAVIGATION_STEPS[1] || [];
+  const currentStartLoc = DRIVER_START_LOCATIONS.find(l => l.id === selectedStartLocationId) || DRIVER_START_LOCATIONS[0];
 
-  // Determine current active navigation maneuver step based on bus location
-  const [currentManeuverIndex, setCurrentManeuverIndex] = useState(3);
-  const currentManeuver = navSteps[currentManeuverIndex] || navSteps[0];
-  const nextManeuver = navSteps[currentManeuverIndex + 1] || navSteps[navSteps.length - 1];
-
-  // Real Phone Geolocation Sensor Integration (navigator.geolocation)
-  useEffect(() => {
-    if (!isRealGpsActive) return;
-
-    if (!('geolocation' in navigator)) {
-      setGpsStatusMessage("Telefoningizda Geolocation sensori qo'llab-quvvatlanmaydi!");
-      setIsRealGpsActive(false);
-      return;
-    }
-
-    setGpsStatusMessage("Telefon GPS ulanmoqda...");
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude, speed } = position.coords;
-        const speedKmH = speed ? Math.round(speed * 3.6) : Math.floor(Math.random() * 15) + 30;
-        updateBusLocationManually(vehicle.id, latitude, longitude, speedKmH);
-        setGpsStatusMessage(`Telefon GPS aktiv: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      },
-      (err) => {
-        console.warn("GPS error:", err.message);
-        setGpsStatusMessage("Telefon GPS joylashuviga ruxsat berilmadi yoki sensor qidirilmoqda...");
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 1000,
-        timeout: 10000
-      }
+  // 1. Initialize & Start Trip: Calculate automatic optimal sequence
+  const handleStartTrip = () => {
+    const sortedStudents = calculateOptimalPickupSequence(
+      currentStartLoc.lat,
+      currentStartLoc.lng,
+      students,
+      schoolLocation?.lat || SCHOOL_LOCATION.lat,
+      schoolLocation?.lng || SCHOOL_LOCATION.lng
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [isRealGpsActive, vehicle.id]);
+    setPickupSequence(sortedStudents);
+    setCurrentPickupIndex(0);
+    setTripStage('in_progress');
 
+    // Update bus starting position to driver start location
+    updateBusLocationManually(vehicle.id, currentStartLoc.lat, currentStartLoc.lng, 35);
+  };
+
+  // Current active target student on the route
+  const currentTargetStudent = pickupSequence[currentPickupIndex] || null;
+  const isAllStudentsPickedUp = tripStage === 'in_progress' && currentPickupIndex >= pickupSequence.length;
+
+  // 2. Open QR Scanner when arriving at student stop
+  const handleArrivedAtStop = (student: Student) => {
+    setActiveScannedStudent(student);
+    setIsQrModalOpen(true);
+  };
+
+  // 3. Process Successful QR Scan
   const handleScanCodeSuccess = (studentId: number, code: string) => {
     confirmStudentPickup(studentId, 'qr');
     setIsQrModalOpen(false);
-  };
 
-  const handleFaceSuccess = (studentId: number) => {
-    confirmStudentPickup(studentId, 'face');
-    setIsFaceModalOpen(false);
-  };
+    // Automatically advance to the next student in the sequence!
+    const nextIdx = currentPickupIndex + 1;
+    setCurrentPickupIndex(nextIdx);
 
-  const getManeuverIcon = (type: NavigationManeuver['type']) => {
-    switch (type) {
-      case 'turn-right':
-        return <CornerUpRight className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400" />;
-      case 'turn-left':
-        return <CornerUpLeft className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400" />;
-      case 'arrive-stop':
-        return <MapPin className="w-8 h-8 sm:w-10 sm:h-10 text-amber-400 animate-bounce" />;
-      case 'arrive-school':
-        return <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-purple-400" />;
-      default:
-        return <ArrowUp className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-400" />;
+    if (nextIdx < pickupSequence.length) {
+      const nextStudent = pickupSequence[nextIdx];
+      if (nextStudent.address) {
+        updateBusLocationManually(vehicle.id, nextStudent.address.latitude, nextStudent.address.longitude, 40);
+      }
+    } else {
+      // Direct bus towards Nova School
+      updateBusLocationManually(
+        vehicle.id, 
+        schoolLocation?.lat || SCHOOL_LOCATION.lat, 
+        schoolLocation?.lng || SCHOOL_LOCATION.lng, 
+        42
+      );
     }
   };
 
+  // 4. Finish Trip at School
+  const handleFinishSchoolArrival = () => {
+    confirmSchoolArrival(101);
+    setTripStage('completed');
+  };
+
   return (
-    <div className="max-w-4xl mx-auto px-3 py-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="max-w-4xl mx-auto px-3 py-4 sm:p-6 space-y-5 text-white">
       
-      {/* 1. Yandex Navigator-Style Live Turn-by-Turn GPS HUD Banner */}
-      <div className="backdrop-blur-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-2 border-indigo-500/40 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 text-white relative overflow-hidden">
+      {/* 1. INTERACTIVE DRIVER MISSION CONTROL & AUTOMATED SEQUENCE HUD */}
+      <div className="backdrop-blur-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-2 border-indigo-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          
-          {/* Maneuver Big Turn Icon & Main Instruction */}
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-950/80 border border-white/15 flex items-center justify-center shadow-xl shrink-0">
-              {getManeuverIcon(currentManeuver.type)}
+        {/* Top Stage Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-indigo-500/20 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shrink-0">
+              <Bus className="w-6 h-6 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full font-black text-xs uppercase tracking-wider">
-                  {currentManeuver.distanceMeters} m dan so'ng
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">GPS Navigatsiya</span>
-              </div>
-              <h2 className="text-lg sm:text-2xl font-black text-white mt-1 leading-snug">
-                {currentManeuver.instruction}
-              </h2>
-              <p className="text-xs text-indigo-300 font-semibold mt-0.5 flex items-center gap-1.5">
-                <Navigation className="w-3.5 h-3.5" />
-                Hozir: <strong className="text-white">{currentManeuver.streetName}</strong>
-              </p>
-            </div>
-          </div>
-
-          {/* Speedometer & Audio Voice Toggle */}
-          <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
-            <div className="bg-slate-950/90 border border-slate-800 px-4 py-2 rounded-2xl text-center shadow-inner">
-              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center justify-center gap-1">
-                <Gauge className="w-3 h-3 text-amber-400" /> Tezlik
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Avtomatik Ketma-Ketlik Navigatri
               </span>
-              <p className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
-                {busLoc?.speed || 42} <span className="text-xs text-slate-400 font-sans">km/h</span>
-              </p>
-              <span className="text-[9px] text-slate-400 font-semibold block">Maks: 50 km/h</span>
+              <h2 className="text-lg sm:text-xl font-black text-white">
+                {currentDriverObj.user?.first_name || 'Jasur'} {currentDriverObj.user?.last_name || 'Raximov'} ({vehicle.plate_number})
+              </h2>
             </div>
-
-            <button
-              onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
-              className={`p-2.5 rounded-2xl border transition flex items-center gap-1.5 text-xs font-bold ${
-                isVoiceEnabled ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/40' : 'bg-slate-800 text-slate-400 border-slate-700'
-              }`}
-              title="Ovozli yo'l ko'rsatuvchi"
-            >
-              {isVoiceEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isVoiceEnabled ? "Ovozli: Faol" : "Ovoz: O'chiq"}</span>
-            </button>
           </div>
 
-        </div>
-
-        {/* Next upcoming street bar */}
-        <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-bold">Keyingi burilish:</span>
-            <span className="text-white font-semibold flex items-center gap-1">
-              ➔ {nextManeuver?.instruction} ({nextManeuver?.streetName})
+            <span className={`px-3 py-1 rounded-xl text-xs font-black border ${
+              tripStage === 'in_progress' 
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse' 
+                : tripStage === 'completed'
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                : 'bg-slate-800 text-slate-300 border-slate-700'
+            }`}>
+              {tripStage === 'in_progress' ? '🟢 Reys Faol' : tripStage === 'completed' ? '🏁 Yakunlandi' : '🟡 Kutilmoqda'}
             </span>
           </div>
-
-          <button
-            onClick={() => setShowAllTurns(!showAllTurns)}
-            className="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
-          >
-            <Route className="w-3.5 h-3.5" />
-            {showAllTurns ? "Ko'chalarni yopish" : "Barcha ko'chalar & burilishlar"}
-            {showAllTurns ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
         </div>
 
-        {/* Collapsible All Turn-by-Turn Maneuvers Drawer */}
-        {showAllTurns && (
-          <div className="pt-2 border-t border-slate-800 space-y-2 text-xs max-h-60 overflow-y-auto pr-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Marshrut bo'yicha barcha burilishlar va ko'chalar ketma-ketligi:</p>
-            <div className="divide-y divide-slate-800/60">
-              {navSteps.map((st, idx) => (
-                <div 
-                  key={st.id} 
-                  onClick={() => setCurrentManeuverIndex(idx)}
-                  className={`py-2.5 px-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition ${
-                    idx === currentManeuverIndex ? 'bg-indigo-600/30 border border-indigo-500/40 text-white font-bold' : 'hover:bg-slate-800/40 text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-[10px] font-bold flex items-center justify-center shrink-0">
-                      {idx + 1}
+        {/* STAGE A: IDLE - Select Starting Point and Launch Automated Trip */}
+        {tripStage === 'idle' && (
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">
+                1. Haydovchi Harakatni Qayerdan Boshlaydi?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {DRIVER_START_LOCATIONS.map(loc => (
+                  <button
+                    key={loc.id}
+                    onClick={() => setSelectedStartLocationId(loc.id)}
+                    className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between ${
+                      selectedStartLocationId === loc.id 
+                        ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' 
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-xs text-white mb-1">{loc.name}</div>
+                    <div className="text-[10px] text-slate-400">{loc.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 bg-indigo-950/40 border border-indigo-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-emerald-400" />
+                  Avtomatik Optimal Ketma-Ketlik
+                </h4>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Tizim tanlangan boshlang'ich nuqtadan eng yaqin o'quvchilarni ketma-ket hisoblab beradi.
+                </p>
+              </div>
+
+              <button
+                onClick={handleStartTrip}
+                className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-2xl shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2 active:scale-95 border border-white/20 shrink-0"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>O'quvchilarni Yig'ishni Boshlash</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STAGE B: IN PROGRESS - Active Stop & QR Scanner Workflow */}
+        {tripStage === 'in_progress' && (
+          <div className="space-y-4">
+            
+            {/* Current Active Destination Banner */}
+            {!isAllStudentsPickedUp && currentTargetStudent ? (
+              <div className="p-5 bg-gradient-to-r from-blue-900/60 via-indigo-900/60 to-slate-900/80 border-2 border-blue-400/40 rounded-2xl space-y-4 shadow-xl">
+                
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3.5">
+                    <span className="w-9 h-9 rounded-2xl bg-blue-600 text-white font-black text-sm flex items-center justify-center shadow-lg">
+                      {currentPickupIndex + 1}
                     </span>
+                    <img 
+                      src={currentTargetStudent.photo_url} 
+                      alt={currentTargetStudent.first_name} 
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-blue-400 shadow-md"
+                    />
                     <div>
-                      <p className="text-xs">{st.instruction}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">{st.streetName}</p>
+                      <span className="text-[10px] uppercase font-bold text-blue-300 tracking-wider">Hozirgi Manzil:</span>
+                      <h3 className="font-black text-lg text-white">
+                        {currentTargetStudent.first_name} {currentTargetStudent.last_name} ({currentTargetStudent.class_name})
+                      </h3>
+                      <p className="text-xs text-slate-300 flex items-center gap-1.5 mt-0.5">
+                        <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        {currentTargetStudent.address?.address_text}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400 shrink-0">{st.distanceMeters} m</span>
+
+                  <a 
+                    href={`tel:${currentTargetStudent.primary_parent?.user?.phone || '+998905556677'}`}
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-400" /> Qo'ng'iroq
+                  </a>
                 </div>
-              ))}
+
+                {/* Big Action Button: Arrived at Stop & Scan QR */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                  <button
+                    onClick={() => handleArrivedAtStop(currentTargetStudent)}
+                    className="w-full sm:flex-1 py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-amber-500/30 transition flex items-center justify-center gap-2.5 active:scale-95 border-2 border-white/40 animate-pulse"
+                  >
+                    <QrCode className="w-5 h-5 text-slate-950" />
+                    <span>🛑 Bekatga Yetib Keldik: {currentTargetStudent.first_name}ni QR Skaner Qilish</span>
+                  </button>
+                </div>
+
+              </div>
+            ) : (
+              /* All Students Picked Up -> Heading to Nova School */
+              <div className="p-5 bg-gradient-to-r from-purple-950/70 via-indigo-950/70 to-slate-900/80 border-2 border-purple-400/40 rounded-2xl space-y-4 shadow-xl text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold">
+                      🏫
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-purple-300 tracking-wider">Yakuniy Bosqich:</span>
+                      <h3 className="font-black text-lg text-white">Barcha O'quvchilar Avtobusga Chiqdi!</h3>
+                      <p className="text-xs text-slate-300">Nova International AI School Urgench tomon yo'nalmoqda</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleFinishSchoolArrival}
+                    className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs rounded-2xl shadow-xl shadow-purple-600/30 transition flex items-center justify-center gap-2 border border-white/20 active:scale-95"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>🏫 Maktabga Yetib Keldik (Reysni Yakunlash)</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Live Automated Pickup Sequence Stepper */}
+            <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 space-y-3">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>O'quvchilarni Yig'ish Ketma-ketligi ({currentPickupIndex}/{pickupSequence.length})</span>
+                <span className="text-indigo-400 font-normal">Optimal Marshrut</span>
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {pickupSequence.map((st, idx) => {
+                  const isPicked = idx < currentPickupIndex;
+                  const isCurrent = idx === currentPickupIndex;
+
+                  return (
+                    <div 
+                      key={st.id}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition ${
+                        isPicked 
+                          ? 'bg-emerald-950/40 border-emerald-500/30 text-slate-400' 
+                          : isCurrent 
+                          ? 'bg-blue-600/30 border-blue-400 text-white shadow-md' 
+                          : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                      }`}
+                    >
+                      <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
+                        isPicked ? 'bg-emerald-500 text-slate-950' : isCurrent ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400'
+                      }`}>
+                        {isPicked ? '✓' : idx + 1}
+                      </span>
+                      <div className="truncate">
+                        <div className="font-bold text-xs text-white truncate">{st.first_name} {st.last_name}</div>
+                        <div className="text-[9px] text-slate-400 truncate">{st.address?.address_text}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
+          </div>
+        )}
+
+        {/* STAGE C: COMPLETED */}
+        {tripStage === 'completed' && (
+          <div className="p-6 bg-emerald-950/40 border-2 border-emerald-500/40 rounded-2xl text-center space-y-3">
+            <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+            <h3 className="font-black text-lg text-white">Ertalabki Qatnov Muvaffaqiyatli Yakunlandi!</h3>
+            <p className="text-xs text-slate-300">Barcha o'quvchilar xavfsiz maktabga yetkazildi va ota-onalarga bildirishnomalar yuborildi.</p>
+            <button
+              onClick={() => setTripStage('idle')}
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition border border-slate-700"
+            >
+              Yangi Reys Tayyorlash
+            </button>
           </div>
         )}
 
       </div>
 
-      {/* 2. Driver Profile Header & GPS Mode Controls */}
-      <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg border border-white/20 shrink-0">
-              <Bus className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <span className="text-[11px] font-extrabold text-indigo-400 uppercase tracking-widest flex items-center gap-1">
-                {activeTripType === 'morning' ? (
-                  <><Sun className="w-3.5 h-3.5 text-amber-400" /> ERTALABKI MARSHRUT</>
-                ) : (
-                  <><Moon className="w-3.5 h-3.5 text-indigo-400" /> KECHKI MARSHRUT</>
-                )}
-              </span>
-              <h2 className="text-lg sm:text-xl font-black text-white">{currentUser?.first_name} {currentUser?.last_name}</h2>
-              <p className="text-xs text-slate-400">Avtobus: <strong className="text-white font-mono">{vehicle.plate_number}</strong> • Sig'imi: {vehicle.capacity} kishi</p>
-            </div>
-          </div>
-
-          {/* Trip Type Toggle Buttons */}
-          <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 w-full sm:w-auto">
-            <button
-              onClick={() => setActiveTripType('morning')}
-              className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                activeTripType === 'morning' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Sun className="w-4 h-4" /> Ertalab
-            </button>
-            <button
-              onClick={() => setActiveTripType('evening')}
-              className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                activeTripType === 'evening' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Moon className="w-4 h-4" /> Kechqurun
-            </button>
-          </div>
-        </div>
-
-        {/* Real Phone GPS & Simulation Controls */}
-        <div className="pt-3 border-t border-slate-800 space-y-2 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-3 w-3 shrink-0">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isRealGpsActive ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-                <span className={`relative inline-flex rounded-full h-3 w-3 ${isRealGpsActive ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-              </span>
-              <span className="text-xs text-slate-300">
-                GPS Rejimi: <strong className="text-white">{isRealGpsActive ? '📱 Telefon Real GPS Sensori' : '🔄 Avto Simulyatsiya'}</strong>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setIsRealGpsActive(!isRealGpsActive);
-                  if (busLoc?.isSimulating) toggleBusSimulation(vehicle.id);
-                }}
-                className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
-                  isRealGpsActive 
-                    ? 'bg-emerald-600 text-white border-emerald-400 shadow-md' 
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                }`}
-              >
-                <Smartphone className="w-4 h-4" />
-                {isRealGpsActive ? "GPS To'xtatish" : "📱 Telefon GPS Yoqish"}
-              </button>
-
-              <button
-                onClick={() => {
-                  toggleBusSimulation(vehicle.id);
-                  if (isRealGpsActive) setIsRealGpsActive(false);
-                }}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                {busLoc?.isSimulating ? "Simulyatsiyani To'xtatish" : "Simulyatsiya Yoqish"}
-              </button>
-            </div>
-
-          </div>
-
-          {gpsStatusMessage && (
-            <p className="text-[11px] text-emerald-400 font-mono bg-slate-950/80 p-2 rounded-xl border border-slate-800 flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-emerald-400 animate-spin shrink-0" />
-              <span>{gpsStatusMessage}</span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* 3. Dynamic Route Change Alert Banner for Driver when Parent answers "Yo'q" */}
-      {tripStudents.some(ts => ts.status === 'cancelled') && (
-        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 rounded-3xl p-4 sm:p-5 shadow-2xl border border-amber-300 animate-in fade-in zoom-in duration-300 flex items-start gap-3">
-          <AlertTriangle className="w-6 h-6 text-slate-950 shrink-0 mt-0.5" />
+      {/* 2. LIVE MAP HUD */}
+      <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-5 shadow-2xl space-y-3">
+        <div className="flex items-center justify-between">
           <div>
-            <h4 className="font-black text-xs sm:text-sm uppercase tracking-wider">📢 MARSHRUT O'ZGARDI (07:00 SO'ROVNOMA)</h4>
-            <p className="text-xs font-bold mt-1 text-slate-900">
-              Ota-ona 07:00 so'rovnomasida "Yo'q" deb javob berdi. O'quvchi bugun olib ketilmaydi. Avtobus marshrut chizig'i va bekatlar ro'yxati avtomatik qayta hisoblandi.
-            </p>
+            <h3 className="font-black text-base text-white">Jonli Navigatr Xaritasi</h3>
+            <p className="text-xs text-slate-400">Urganch bo'ylab real ko'cha yo'nalishi</p>
           </div>
-        </div>
-      )}
-
-      {/* 4. Prominent Action Bar: QR Scan & Emergency SOS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        
-        <button
-          onClick={() => setIsQrModalOpen(true)}
-          className="p-4 sm:p-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-3xl shadow-2xl flex items-center justify-between group transition transform active:scale-95 border border-white/20"
-        >
-          <div className="text-left">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-blue-200 block">ASOSIY TASDIQLASH</span>
-            <h3 className="font-extrabold text-base sm:text-xl">QR Kod Skaner qilish</h3>
-            <p className="text-xs text-blue-100 mt-0.5">O'quvchini avtobusga olish / topshirish</p>
-          </div>
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center shrink-0 border border-white/30 backdrop-blur-md">
-            <QrCode className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
-          </div>
-        </button>
-
-        <button
-          onClick={() => setIsFaceModalOpen(true)}
-          className="p-4 sm:p-5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-3xl shadow-2xl flex items-center justify-between group transition transform active:scale-95 border border-white/20"
-        >
-          <div className="text-left">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-purple-200 block">QO'SHIMCHA USUL</span>
-            <h3 className="font-extrabold text-base sm:text-xl">Yuz orqali Aniqlash</h3>
-            <p className="text-xs text-purple-100 mt-0.5">Maxfiylik roziligi bilan taniyish</p>
-          </div>
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center shrink-0 border border-white/30 backdrop-blur-md">
-            <Camera className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
-          </div>
-        </button>
-
-      </div>
-
-      {/* 5. Prominent Emergency SOS Panic Button */}
-      <div className="bg-red-500/15 border-2 border-red-500/40 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-md">
-        <div className="flex items-center gap-3 text-center sm:text-left">
-          <div className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-lg border border-white/20">
-            <AlertOctagon className="w-7 h-7" />
-          </div>
-          <div>
-            <h4 className="font-black text-red-300 text-base flex items-center justify-center sm:justify-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" />
-              FAVQULODDA HOLAT (SOS)
-            </h4>
-            <p className="text-xs text-red-200/80">YTH yoki favqulodda hodisa yuz berganda admin paneliga tezkor signal yuboradi</p>
-          </div>
+          <a
+            href="/map"
+            className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-black shadow transition flex items-center gap-1.5"
+          >
+            <Navigation className="w-3.5 h-3.5" /> To'liq Ekranda Ochish
+          </a>
         </div>
 
-        <button
-          onClick={() => triggerSOS(101, 1, 1)}
-          className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-base uppercase tracking-wider rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition border border-white/20 flex items-center justify-center gap-2"
-        >
-          <AlertOctagon className="w-6 h-6" />
-          <span>🚨 SOS TUGMASI</span>
-        </button>
-      </div>
-
-      {/* 6. Driver's Assigned Student List for Today */}
-      <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-          <div>
-            <h3 className="font-black text-white text-base sm:text-lg flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-indigo-400 shrink-0" />
-              Bugungi Marshrut O'quvchilari ({routeStudents.length})
-            </h3>
-            <p className="text-xs text-slate-400">Ketma-ketlik bo'yicha olib ketiladigan o'quvchilar ro'yxati</p>
-          </div>
-
-          {activeTripType === 'morning' ? (
-            <button
-              onClick={() => confirmSchoolArrival(101)}
-              className="w-full sm:w-auto px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-xl transition flex items-center justify-center gap-2 border border-white/10"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Maktabga Yetib Keldik
-            </button>
-          ) : (
-            <button
-              onClick={() => startEveningTrip(101)}
-              className="w-full sm:w-auto px-5 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-2xl shadow-xl transition flex items-center justify-center gap-2 border border-white/10"
-            >
-              <Navigation className="w-4 h-4" />
-              Kechki Safarni Boshlash
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          {routeStudents.map((st, index) => {
-            const stState = tripStudents.find(ts => ts.student_id === st.id);
-            const isPickedUp = stState?.status === 'picked_up';
-            const isArrivedSchool = stState?.status === 'arrived_school';
-            const isArrivedHome = stState?.status === 'arrived_home';
-            const isCancelled = stState?.status === 'cancelled';
-
-            return (
-              <div 
-                key={st.id}
-                className={`p-3.5 sm:p-4 rounded-2xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                  isPickedUp || isArrivedSchool || isArrivedHome 
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-white' 
-                    : isCancelled
-                    ? 'bg-slate-950/40 border-slate-800 text-slate-500 opacity-70'
-                    : 'bg-slate-950/60 border-slate-800/80 text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow">
-                    {index + 1}
-                  </div>
-                  <img src={st.photo_url} alt={st.first_name} className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover border border-slate-700 shrink-0" />
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-white text-sm">
-                        {st.first_name} {st.last_name}
-                      </h4>
-                      <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-300">
-                        {st.class_name}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span className="line-clamp-1">{st.address?.address_text}</span>
-                    </p>
-                    <p className="text-[11px] text-indigo-400 font-medium flex items-center gap-1 mt-0.5">
-                      <Phone className="w-3 h-3 text-indigo-400 shrink-0" />
-                      {st.primary_parent?.user?.phone} ({st.primary_parent?.user?.first_name})
-                    </p>
-                  </div>
-                </div>
-
-                {/* Individual Action Buttons for Driver */}
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-                  {isCancelled ? (
-                    <span className="text-xs bg-slate-800 text-slate-400 font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 w-full sm:w-auto">
-                      <Ban className="w-4 h-4 text-slate-500" /> Bugun Olib Ketilmaydi
-                    </span>
-                  ) : activeTripType === 'morning' ? (
-                    isPickedUp || isArrivedSchool ? (
-                      <span className="text-xs bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl flex items-center justify-center gap-1 shadow w-full sm:w-auto">
-                        <CheckCircle2 className="w-4 h-4" /> {isArrivedSchool ? 'Maktabda' : 'Uyidan Olindi'}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => confirmStudentPickup(st.id, 'manual')}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg transition border border-white/10"
-                      >
-                        Manual Tasdiqlash
-                      </button>
-                    )
-                  ) : (
-                    isArrivedHome ? (
-                      <span className="text-xs bg-teal-600 text-white font-bold px-4 py-2 rounded-xl flex items-center justify-center gap-1 w-full sm:w-auto">
-                        <CheckCircle2 className="w-4 h-4" /> Uyiga Topshirildi
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => confirmHomeArrival(st.id)}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-lg transition border border-white/10"
-                      >
-                        Uyiga Topshirildi
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 7. Driver Map Preview */}
-      <div className="backdrop-blur-2xl bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-3">
-        <h3 className="font-black text-white text-sm flex items-center gap-2">
-          <Navigation className="w-4 h-4 text-blue-400" />
-          Marshrut Navigatsiyasi
-        </h3>
         <BusMap 
-          buses={[{ vehicle, lat: busLoc?.lat || 41.3490, lng: busLoc?.lng || 69.2815, speed: busLoc?.speed || 40 }]}
-          students={routeStudents}
-          center={[busLoc?.lat || 41.3490, busLoc?.lng || 69.2815]}
-          zoom={13}
-          height="300px"
+          buses={[{
+            vehicle,
+            lat: busLoc?.lat || 41.5620,
+            lng: busLoc?.lng || 60.6120,
+            speed: busLoc?.speed || 42,
+            heading: busLoc?.heading || 140
+          }]}
+          students={pickupSequence.length > 0 ? pickupSequence : students}
+          height="380px"
+          followBus={true}
         />
       </div>
 
-      {/* QR & Face Modals */}
+      {/* 3. EMERGENCY SOS BUTTON */}
+      <div className="p-4 bg-red-950/40 border border-red-500/30 rounded-3xl flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <AlertOctagon className="w-8 h-8 text-red-400 shrink-0" />
+          <div>
+            <h4 className="font-black text-sm text-red-300">Favqulodda Signal (SOS)</h4>
+            <p className="text-xs text-red-200/70">Texnik nosozlik yoki favqulodda holatda maktab ma'muriyatiga signal yuborish</p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            triggerSOS(101, vehicle.id, currentDriverObj.id);
+            alert("🚨 SOS Favqulodda signal maktab ma'muriyatiga yuborildi!");
+          }}
+          className="px-5 py-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-2xl shadow-xl shadow-red-600/40 transition active:scale-95 shrink-0"
+        >
+          🚨 SOS YUBORISH
+        </button>
+      </div>
+
+      {/* QR SCANNER MODAL */}
       <QRScannerModal 
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
-        students={routeStudents}
+        students={activeScannedStudent ? [activeScannedStudent] : students}
         onScanSuccess={handleScanCodeSuccess}
-      />
-
-      <FaceRecognitionModal 
-        isOpen={isFaceModalOpen}
-        onClose={() => setIsFaceModalOpen(false)}
-        students={routeStudents}
-        onFaceMatchSuccess={handleFaceSuccess}
       />
 
     </div>
