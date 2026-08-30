@@ -307,6 +307,34 @@ export const ROUTE_STREET_PATHS: Record<number, Array<[number, number]>> = {
   ]
 };
 
+export interface NavigationManeuver {
+  id: number;
+  instruction: string;
+  streetName: string;
+  distanceMeters: number;
+  type: 'straight' | 'turn-right' | 'turn-left' | 'u-turn' | 'arrive-stop' | 'arrive-school';
+  stopStudentName?: string;
+  coord: [number, number];
+}
+
+export const ROUTE_NAVIGATION_STEPS: Record<number, NavigationManeuver[]> = {
+  1: [
+    { id: 1, instruction: "Yunusobod 11-mavzedan janubga qarab harakatlaning", streetName: "Yangi Yunusobod ko'chasi", distanceMeters: 300, type: 'straight', coord: [41.3652, 69.2854] },
+    { id: 2, instruction: "Ahmad Donish ko'chasiga o'ngga buriling", streetName: "Ahmad Donish ko'chasi", distanceMeters: 450, type: 'turn-right', coord: [41.3621, 69.2858] },
+    { id: 3, instruction: "Yunusota chorrahasidan to'g'ri o'ting", streetName: "Ahmad Donish ko'chasi", distanceMeters: 600, type: 'straight', coord: [41.3575, 69.2848] },
+    { id: 4, instruction: "Amir Temur shoh ko'chasiga chapga buriling", streetName: "Amir Temur shoh ko'chasi", distanceMeters: 550, type: 'turn-left', coord: [41.3532, 69.2835] },
+    { id: 5, instruction: "2-bekat: Madina Tursunova uyiga yetib keldingiz", streetName: "Amir Temur ko'chasi 88-uy", distanceMeters: 100, type: 'arrive-stop', stopStudentName: "Madina Tursunova", coord: [41.3480, 69.2810] },
+    { id: 6, instruction: "Shahriston chorrahasi bo'ylab to'g'ri davom eting", streetName: "Amir Temur shoh ko'chasi", distanceMeters: 800, type: 'straight', coord: [41.3435, 69.2825] },
+    { id: 7, instruction: "3-bekat: Jasur Qodirov uyiga yetib keldingiz", streetName: "Bodomzor / Sebzor ko'chasi", distanceMeters: 150, type: 'arrive-stop', stopStudentName: "Jasur Qodirov", coord: [41.3380, 69.2810] },
+    { id: 8, instruction: "Amir Temur shoh ko'chasi bo'ylab Minor metrosi tomon harakatlaning", streetName: "Amir Temur shoh ko'chasi", distanceMeters: 950, type: 'straight', coord: [41.3330, 69.2802] },
+    { id: 9, instruction: "Minor metro chorrahasidan Abdulla Qodiriy ko'chasiga o'ngga buriling", streetName: "Abdulla Qodiriy ko'chasi", distanceMeters: 750, type: 'turn-right', coord: [41.3282, 69.2785] },
+    { id: 10, instruction: "G'afur G'ulom bog'i yonidan Sebzor ko'chasi tomon to'g'ri yuring", streetName: "Abdulla Qodiriy ko'chasi", distanceMeters: 1100, type: 'straight', coord: [41.3195, 69.2660] },
+    { id: 11, instruction: "Alisher Navoiy shoh ko'chasiga chapga buriling", streetName: "Alisher Navoiy shoh ko'chasi", distanceMeters: 850, type: 'turn-left', coord: [41.3160, 69.2560] },
+    { id: 12, instruction: "Xalqlar Do'stligi saroyi chorrahasi bo'ylab to'g'ri o'ting", streetName: "Alisher Navoiy shoh ko'chasi", distanceMeters: 600, type: 'straight', coord: [41.3120, 69.2435] },
+    { id: 13, instruction: "Manzilga yetib kelindi: Nova Xususiy Maktabi darvozasi", streetName: "Navoiy ko'chasi 45-uy", distanceMeters: 50, type: 'arrive-school', coord: [41.311082, 69.240562] }
+  ]
+};
+
 export const MOCK_ROUTES: Route[] = [
   {
     id: 1,
