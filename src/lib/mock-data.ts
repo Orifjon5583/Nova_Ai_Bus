@@ -186,7 +186,7 @@ export const MOCK_STUDENTS: Student[] = [
       student_id: 2,
       address_text: 'Toshkent sh., Yunusobod tumani, A.Temur ko\'chasi 88-uy',
       latitude: 41.3480,
-      longitude: 69.2810,
+      longitude: 69.2845,
       pickup_note: 'Podyezd oldida',
       is_active: true,
       is_confirmed: true,
@@ -210,8 +210,8 @@ export const MOCK_STUDENTS: Student[] = [
       id: 3,
       student_id: 3,
       address_text: 'Toshkent sh., Yunusobod tumani, Bodomzor yo\'li 15-uy',
-      latitude: 41.3320,
-      longitude: 69.2740,
+      latitude: 41.3380,
+      longitude: 69.2835,
       pickup_note: 'Bosh bekat yonida',
       is_active: true,
       is_confirmed: true,
@@ -270,18 +270,19 @@ export const MOCK_STUDENTS: Student[] = [
 
 const RAW_ROUTE_1_POINTS: Array<[number, number]> = [
   [41.3650, 69.2850], // 1-bekat: Yunusobod 11-mavze (Ali)
-  [41.3610, 69.2855], // Ahmad Donish ko'chasi
-  [41.3530, 69.2835], // Ahmad Donish / Amir Temur
-  [41.3480, 69.2810], // 2-bekat: Amir Temur ko'chasi (Madina)
-  [41.3435, 69.2820], // Shahriston metro chorrahasi
-  [41.3380, 69.2810], // 3-bekat: Bodomzor / Sebzor (Jasur)
-  [41.3320, 69.2800], // Amir Temur shoh ko'chasi
-  [41.3280, 69.2785], // Minor metro bekati
-  [41.3245, 69.2710], // Abdulla Qodiriy ko'chasi
-  [41.3210, 69.2620], // Abdulla Qodiriy (G'afur G'ulom bog'i)
-  [41.3180, 69.2530], // Zarqaynar ko'chasi (Chorsu)
-  [41.3150, 69.2470], // Navoiy / Samarqand Darvoza
-  [41.3125, 69.2425], // Qoratosh ko'chasi
+  [41.3600, 69.2865], // Ahmad Donish ko'chasi
+  [41.3530, 69.2855], // Ahmad Donish / Yunusota chorrahasi
+  [41.3480, 69.2845], // 2-bekat: Amir Temur shoh ko'chasi (Madina)
+  [41.3430, 69.2840], // Shahriston metro chorrahasi
+  [41.3380, 69.2835], // 3-bekat: Bodomzor / International Business Center ro'parasidagi Amir Temur shoh ko'chasi (Jasur)
+  [41.3340, 69.2830], // Amir Temur shoh ko'chasi (Osiyo ko'chasi chorrahasi)
+  [41.3295, 69.2815], // Minor metro bekati (Amir Temur shoh ko'chasi)
+  [41.3255, 69.2790], // Amir Temur / Abdulla Qodiriy ko'prigi
+  [41.3245, 69.2730], // Abdulla Qodiriy ko'chasi (Anhor daryosi bo'ylab)
+  [41.3230, 69.2650], // Abdulla Qodiriy ko'chasi (G'afur G'ulom bog'i)
+  [41.3210, 69.2560], // Abdulla Qodiriy / Sebzor ko'prigi
+  [41.3180, 69.2490], // Zarqaynar ko'chasi (Chorsu)
+  [41.3145, 69.2440], // Samarqand Darvoza / Qoratosh ko'chasi
   [41.311082, 69.240562] // Nova Maktab darvozasi (SCHOOL_LOCATION)
 ];
 
