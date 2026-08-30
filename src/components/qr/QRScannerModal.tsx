@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
 import { QrCode, X, CheckCircle2, Camera, UserCheck } from 'lucide-react';
 import { Student } from '../../types/database';
 
@@ -19,29 +18,34 @@ export default function QRScannerModal({ isOpen, onClose, students, onScanSucces
   useEffect(() => {
     if (!isOpen) return;
 
-    let scanner: Html5QrcodeScanner | null = null;
-    try {
-      scanner = new Html5QrcodeScanner(
-        'qr-reader',
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-      );
+    let scannerInstance: any = null;
 
-      scanner.render(
-        (decodedText) => {
-          handleDetectedCode(decodedText);
-        },
-        (error) => {
-          // Ignore scanning errors during standard frame scanning
-        }
-      );
-    } catch (e) {
-      console.warn("Camera scanner fallback active");
-    }
+    import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
+      try {
+        scannerInstance = new Html5QrcodeScanner(
+          'qr-reader',
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          /* verbose= */ false
+        );
+
+        scannerInstance.render(
+          (decodedText: string) => {
+            handleDetectedCode(decodedText);
+          },
+          (error: any) => {
+            // Ignore background frame noise
+          }
+        );
+      } catch (e) {
+        console.warn("Camera scanner fallback active");
+      }
+    }).catch(err => {
+      console.warn("Html5Qrcode dynamic import failed, fallback simulator available", err);
+    });
 
     return () => {
-      if (scanner) {
-        scanner.clear().catch(err => console.error("Failed to clear scanner", err));
+      if (scannerInstance) {
+        scannerInstance.clear().catch((err: any) => console.error("Failed to clear scanner", err));
       }
     };
   }, [isOpen]);
